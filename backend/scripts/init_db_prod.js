@@ -82,9 +82,18 @@ async function initDB() {
             console.log('ℹ️ Nota: Error menor verificando columna target_config (probablemente ya existe o permisos):', e.message);
         }
 
-        // 5. Tabla de Scripts
+        // 5. Tabla de Scripts (Corrección: Nombre correcto campaign_scripts)
+        try {
+            // Intento de migración: Si existe la tabla vieja 'scripts' y no la nueva, renombrarla.
+            // Esto evita perder datos si se creó con el nombre incorrecto.
+            await pool.query('ALTER TABLE IF EXISTS scripts RENAME TO campaign_scripts');
+            console.log('🔄 Migración: Tabla scripts renombrada a campaign_scripts.');
+        } catch (e) {
+            // Ignorar error si ya existe campaign_scripts o si scripts no existe (Postgres < 9.2 sin IF EXISTS)
+        }
+
         await pool.query(`
-            CREATE TABLE IF NOT EXISTS scripts (
+            CREATE TABLE IF NOT EXISTS campaign_scripts (
                 id SERIAL PRIMARY KEY,
                 campaign_id INTEGER REFERENCES campaigns(id) ON DELETE CASCADE,
                 title VARCHAR(100),
