@@ -1,0 +1,1567 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Winton CRM</title>
+    <!-- Iconos Phosphor -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <style>
+        :root {
+            --primary: #007bff;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --bg: #0f172a;
+            --card-bg: #1e293b;
+            --sidebar-bg: #111827;
+            --text: #f8fafc;
+            --border: #374151;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: 'Inter', system-ui, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* SIDEBAR SCRIPTS */
+        .sidebar {
+            width: 380px;
+            /* Un poco más ancho para mejor lectura */
+            background: var(--sidebar-bg);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            flex-shrink: 0;
+        }
+
+        .sidebar-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .campaign-selector {
+            width: 100%;
+            padding: 0.6rem;
+            background: #1f2937;
+            color: white;
+            border: 1px solid var(--border);
+            border-radius: 0.375rem;
+            margin-bottom: 0.5rem;
+            font-size: 0.95rem;
+        }
+
+        .script-list {
+            padding: 1rem;
+            flex-grow: 1;
+            overflow-y: auto;
+        }
+
+        .script-card {
+            background: #1f2937;
+            border: 1px solid var(--border);
+            border-radius: 0.5rem;
+            padding: 1.25rem;
+            margin-bottom: 1rem;
+            transition: border-color 0.2s;
+        }
+
+        .script-card:hover {
+            border-color: var(--primary);
+        }
+
+        .script-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+
+        .script-title {
+            font-weight: 700;
+            font-size: 1rem;
+            color: #e5e7eb;
+        }
+
+        .script-content {
+            font-size: 1rem;
+            /* AUMENTADO */
+            line-height: 1.6;
+            color: #d1d5db;
+            /* Texto más claro */
+            white-space: pre-wrap;
+            max-height: 100px;
+            overflow: hidden;
+            cursor: pointer;
+            position: relative;
+            padding-bottom: 1rem;
+            /* Espacio para el indicador */
+        }
+
+        .script-content.expanded {
+            max-height: none;
+        }
+
+        .script-content::after {
+            content: '⬇️ ver más';
+            font-size: 0.8rem;
+            color: var(--primary);
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            background: #1f2937;
+            padding-left: 10px;
+            cursor: pointer;
+        }
+
+        .script-content.expanded::after {
+            display: none;
+        }
+
+        .script-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .icon-btn {
+            background: transparent;
+            border: 1px solid #374151;
+            color: #9ca3af;
+            cursor: pointer;
+            padding: 6px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .icon-btn:hover {
+            background: #374151;
+            color: white;
+            border-color: #4b5563;
+        }
+
+        .icon-btn.edit:hover {
+            color: var(--warning);
+            border-color: var(--warning);
+        }
+
+        .icon-btn.delete:hover {
+            color: var(--danger);
+            border-color: var(--danger);
+        }
+
+        .icon-btn.copy:hover {
+            color: var(--success);
+            border-color: var(--success);
+            background: rgba(16, 185, 129, 0.1);
+        }
+
+        /* MAIN CONTENT */
+        .main-content {
+            flex-grow: 1;
+            padding: 2rem;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        /* HEADER y GRID */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+
+        .btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.6rem 1.2rem;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--border);
+        }
+
+        .btn-sm {
+            font-size: 0.85rem;
+            padding: 0.4rem 0.8rem;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            border: 1px solid var(--border);
+        }
+
+        .status-badge {
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .status-pending {
+            background: #334155;
+        }
+
+        .status-contacted {
+            background: var(--warning);
+            color: #000;
+        }
+
+        .status-negotiating {
+            background: var(--primary);
+        }
+
+        .status-closed {
+            background: var(--success);
+        }
+
+        /* MODALS */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background: var(--card-bg);
+            padding: 2rem;
+            border-radius: 0.5rem;
+            width: 100%;
+            max-width: 600px;
+        }
+
+        input,
+        select,
+        textarea {
+            width: 100%;
+            padding: 0.75rem;
+            background: #0f172a;
+            border: 1px solid var(--border);
+            color: white;
+            border-radius: 0.375rem;
+            margin-bottom: 1.25rem;
+            font-family: inherit;
+            font-size: 0.95rem;
+            /* Input text bigger */
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #cbd5e1;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- MOBILE TOGGLE -->
+    <button id="mobileScriptToggle" onclick="document.querySelector('.sidebar').classList.toggle('active')">
+        💬 Ver Scripts / Campañas
+    </button>
+
+    <!-- SIDEBAR: CAMPAÑAS Y SCRIPTS -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h3 style="margin:0 0 1rem 0;">💬 Gestor de Scripts</h3>
+            <label style="font-size:0.85rem; color:#9ca3af; margin-bottom:0.5rem;">Seleccionar Campaña:</label>
+            <div style="display:flex; gap:0.5rem; flex-direction: column;">
+                <select id="campaignSelect" class="campaign-selector" onchange="loadScripts(this.value)">
+                    <option value="">Cargando...</option>
+                </select>
+
+                <!-- Solo Admin -->
+                <div id="adminScriptControls" style="display:none; gap: 0.5rem;">
+                    <button id="addCampaignBtn" class="btn btn-sm btn-outline"
+                        onclick="openModal('createCampaignModal')" style="flex:1;">+ Nueva Campaña</button>
+                    <button id="addScriptBtn" class="btn btn-sm" onclick="openScriptModal('create')" style="flex:1;">+
+                        Nuevo Mensaje</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="scriptList" class="script-list">
+            <div style="text-align:center; color:#6b7280; padding-top:2rem;">Selecciona una campaña</div>
+        </div>
+    </div>
+
+    <!-- CONTENIDO PRINCIPAL -->
+    <div class="main-content">
+        <div class="container" style="max-width: 1200px; margin: 0 auto;">
+            <header>
+                <div>
+                    <h1>Winton CRM</h1>
+                    <p id="userWelcome" style="color: #94a3b8; margin-top: 0.5rem;">Agente</p>
+                </div>
+                <div style="display:flex; gap:1rem; align-items: center;">
+                    <button class="btn" onclick="openModal('createLeadModal')">+ Nuevo Lead</button>
+                    <!-- Admin Only Buttons -->
+                    <div id="adminButtons" style="display:none; gap:0.5rem;">
+                        <button class="btn btn-outline" onclick="openReportModal()">📊 Reportes</button>
+                        <button class="btn btn-outline" onclick="openTeamModal()">👥 Equipo</button>
+                    </div>
+                    <button class="btn btn-outline" id="logoutBtn" style="border:none; color: #ef4444;">Salir</button>
+                </div>
+            </header>
+
+            <!-- ... (leads grid etc) ... -->
+            <!-- Modal Reportes (Supervisión) -->
+            <div id="reportsModal" class="modal">
+                <div class="modal-content" style="max-width: 900px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+                        <h3>📊 Panel de Supervisión</h3>
+                        <button class="btn btn-sm btn-outline" onclick="closeModal('reportsModal')">Cerrar</button>
+                    </div>
+
+                    <!-- KPIs -->
+                    <div class="grid" style="grid-template-columns: repeat(3, 1fr); gap:1rem; margin-bottom:2rem;">
+                        <div class="card" style="text-align:center; padding:1rem;">
+                            <h4 style="margin:0; color:#9ca3af;">Total Leads</h4>
+                            <span id="kpiTotal" style="font-size:2rem; font-weight:bold;">-</span>
+                        </div>
+                        <div class="card" style="text-align:center; padding:1rem;">
+                            <h4 style="margin:0; color:#9ca3af;">Actividad Hoy</h4>
+                            <span id="kpiToday" style="font-size:2rem; font-weight:bold; color:var(--primary);">-</span>
+                        </div>
+                        <div class="card" style="text-align:center; padding:1rem;">
+                            <h4 style="margin:0; color:#9ca3af;">Deals Cerrados</h4>
+                            <span id="kpiClosed"
+                                style="font-size:2rem; font-weight:bold; color:var(--success);">-</span>
+                        </div>
+                    </div>
+
+                    <!-- Tabla Leaderboard -->
+                    <h4 style="margin-bottom:0.5rem;">🏆 Rendimiento por Agente</h4>
+                    <div
+                        style="overflow-x:auto; max-height:200px; border:1px solid var(--border); border-radius:0.5rem; margin-bottom: 2rem;">
+                        <table style="width:100%; border-collapse:collapse; font-size:0.9rem;">
+                            <thead style="background:#1f2937; position:sticky; top:0;">
+                                <tr>
+                                    <th style="padding:0.75rem; text-align:left;">Agente</th>
+                                    <th style="padding:0.75rem; text-align:center;">Leads Asignados</th>
+                                    <th style="padding:0.75rem; text-align:center;">Deals Cerrados</th>
+                                    <th style="padding:0.75rem; text-align:right;">Última Actividad</th>
+                                </tr>
+                            </thead>
+                            <tbody id="leaderboardBody">
+                                <tr>
+                                    <td colspan="4" style="text-align:center; padding:1rem;">Cargando...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Tabla Actividad Reciente -->
+                    <h4>Actividad Reciente (Feed en Vivo)</h4>
+                    <div
+                        style="overflow-x:auto; max-height:400px; border:1px solid var(--border); border-radius:0.5rem;">
+                        <table style="width:100%; border-collapse:collapse; font-size:0.9rem;">
+                            <thead style="background:#1f2937; position:sticky; top:0;">
+                                <tr>
+                                    <th style="padding:0.75rem; text-align:left;">Hora</th>
+                                    <th style="padding:0.75rem; text-align:left;">Agente</th>
+                                    <th style="padding:0.75rem; text-align:left;">Influencer</th>
+                                    <th style="padding:0.75rem; text-align:left;">Acción</th>
+                                    <th style="padding:0.75rem; text-align:left;">Notas</th>
+                                </tr>
+                            </thead>
+                            <tbody id="activityTableBody">
+                                <tr>
+                                    <td colspan="5" style="padding:1rem; text-align:center;">Cargando...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VISTA ADMIN: TABLERO DE COMANDO -->
+            <div id="adminDashboardView" style="display:none; margin-top:2rem;">
+                <h2 style="border-bottom:1px solid #374151; padding-bottom:0.5rem; margin-bottom:1.5rem;">👮‍♂️
+                    Supervisión de Agentes</h2>
+
+                <div id="agentsGrid" class="grid"
+                    style="grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap:1.5rem;">
+                    <div style="text-align:center; padding:2rem; color:#94a3b8;">Cargando equipo...</div>
+                </div>
+            </div>
+
+            <!-- VISTA AGENTE: MIS LEADS -->
+            <div id="agentDashboardView" style="display:none;">
+                <div
+                    style="display:flex; justify-content:space-between; margin-bottom:1.5rem; align-items: center; margin-top:2rem;">
+                    <h2 style="font-size: 1.5rem;">Mis Leads</h2>
+                    <select id="statusFilter" style="width:auto; margin:0; min-width: 150px;">
+                        <option value="">Todos</option>
+                        <option value="pending">Pendientes</option>
+                        <option value="contacted">Contactados</option>
+                    </select>
+                </div>
+                <div id="leadsGrid" class="grid"></div>
+            </div>
+
+            <!-- VISTA FULL PRO AGENTE (SUPERVISIÓN DETALLADA) -->
+            <div id="agentFullProfileView" style="display:none; height: calc(100vh - 100px); overflow:hidden;">
+                <!-- HEADER & NAV -->
+                <div
+                    style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; padding-bottom:1rem; border-bottom:1px solid #374151;">
+                    <div style="display:flex; align-items:center; gap:1rem;">
+                        <button class="btn btn-outline" onclick="initDashboard()">← Volver</button>
+                        <div
+                            style="width:40px; height:40px; background:#374151; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
+                            👤</div>
+                        <div>
+                            <h2 style="margin:0; font-size:1.5rem;" id="fpAgentName">Agente</h2>
+                            <div style="font-size:0.85rem; color:#9ca3af;">ID: <span id="fpAgentId">-</span> • Miembro
+                                desde: <span id="fpAgentJoined">-</span></div>
+                        </div>
+                    </div>
+                    <div style="display:flex; gap:2rem; text-align:right;">
+                        <div>
+                            <span
+                                style="display:block; font-size:0.75rem; color:#9ca3af; text-transform:uppercase;">Total
+                                Leads</span>
+                            <span style="font-size:1.5rem; font-weight:bold;" id="fpStatTotal">-</span>
+                        </div>
+                        <div>
+                            <span
+                                style="display:block; font-size:0.75rem; color:#9ca3af; text-transform:uppercase;">Contactados</span>
+                            <span style="font-size:1.5rem; font-weight:bold; color:var(--primary);"
+                                id="fpStatContacted">-</span>
+                        </div>
+                        <div>
+                            <span
+                                style="display:block; font-size:0.75rem; color:#9ca3af; text-transform:uppercase;">Cerrados</span>
+                            <span style="font-size:1.5rem; font-weight:bold; color:var(--success);"
+                                id="fpStatClosed">-</span>
+                        </div>
+                        <div>
+                            <span
+                                style="display:block; font-size:0.75rem; color:#9ca3af; text-transform:uppercase;">Conversión</span>
+                            <span style="font-size:1.5rem; font-weight:bold; color:#facc15;"
+                                id="fpStatConversion">0%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CONTENIDO PRINCIPAL (SPLIT VIEW) -->
+                <div style="display:grid; grid-template-columns: 2fr 1fr; gap:1.5rem; height: calc(100% - 140px);">
+
+                    <!-- IZQUIERDA: CARTERA DE CLIENTES -->
+                    <div class="card"
+                        style="display:flex; flex-direction:column; padding:0; overflow:hidden; border:1px solid #374151;">
+                        <div
+                            style="padding:1rem; background:#1f2937; border-bottom:1px solid #374151; display:flex; justify-content:space-between; align-items:center;">
+                            <h3 style="margin:0; font-size:1.1rem;">📂 Cartera Asignada</h3>
+                            <input type="text" placeholder="Buscar lead..."
+                                style="padding:0.4rem; font-size:0.8rem; border-radius:4px; border:1px solid #4b5563; background:#374151; color:white;"
+                                onkeyup="filterAgentLeads(this.value)">
+                        </div>
+
+                        <div style="overflow-y:auto; flex:1;">
+                            <table style="width:100%; border-collapse:collapse; font-size:0.9rem;">
+                                <thead style="background:#111827; position:sticky; top:0; z-index:10;">
+                                    <tr>
+                                        <th style="padding:0.75rem; text-align:left; color:#9ca3af;">Nombre</th>
+                                        <th style="padding:0.75rem; text-align:left; color:#9ca3af;">Plataforma/País
+                                        </th>
+                                        <th style="padding:0.75rem; text-align:center; color:#9ca3af;">Nicho</th>
+                                        <th style="padding:0.75rem; text-align:center; color:#9ca3af;">Estado</th>
+                                        <th style="padding:0.75rem; text-align:right; color:#9ca3af;">Acción</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="fpLeadsBody">
+                                    <!-- JS Inject -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- DERECHA: INSPECTOR DE ACTIVIDAD -->
+                    <div class="card"
+                        style="display:flex; flex-direction:column; padding:0; overflow:hidden; border:1px solid #374151; background:#0f172a;">
+                        <div style="padding:1rem; background:#1e293b; border-bottom:1px solid #374151;">
+                            <h3 style="margin:0; font-size:1.1rem; color:var(--primary);" id="fpInspectorTitle">📡 Feed
+                                Global</h3>
+                            <div style="font-size:0.75rem; color:#9ca3af; margin-top:0.25rem;">Haga clic en un lead para
+                                ver su historial específico</div>
+                        </div>
+                        <div id="fpInspectorContent"
+                            style="overflow-y:auto; flex:1; padding:1rem; display:flex; flex-direction:column; gap:1rem;">
+                            <!-- JS Inject Timeline -->
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+
+            <!-- ================= MODALS ================= -->
+
+            <!-- Modal Crear Campaña -->
+            <div id="createCampaignModal" class="modal">
+                <div class="modal-content">
+                    <h3>Nueva Campaña</h3>
+                    <form id="createCampaignForm">
+                        <label>Nombre de la Campaña</label>
+                        <input type="text" id="newCampName" required placeholder="Ej: Febrero 2026 - TikTok">
+                        <label>Descripción</label>
+                        <textarea id="newCampDesc" rows="2"></textarea>
+                        <div style="text-align:right;">
+                            <button type="button" class="btn btn-outline"
+                                onclick="closeModal('createCampaignModal')">Cancelar</button>
+                            <button type="submit" class="btn">Crear</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Modal Crear/Editar Script -->
+            <div id="scriptModal" class="modal">
+                <div class="modal-content">
+                    <h3 id="scriptModalTitle">Nuevo Mensaje</h3>
+                    <form id="scriptForm">
+                        <input type="hidden" id="scriptId"> <!-- Para edición -->
+                        <label>Título (Ej: Primer Contacto)</label>
+                        <input type="text" id="scriptTitle" required>
+                        <label>Contenido del Mensaje</label>
+                        <textarea id="scriptContent" rows="8" required style="font-size: 1rem;"></textarea>
+                        <div style="text-align:right;">
+                            <button type="button" class="btn btn-outline"
+                                onclick="closeModal('scriptModal')">Cancelar</button>
+                            <button type="submit" class="btn">Guardar</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Modal Crear Lead -->
+            <div id="createLeadModal" class="modal">
+                <div class="modal-content">
+                    <h3>Nuevo Prospecto</h3>
+                    <form id="createLeadForm">
+                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
+                            <div>
+                                <label>Nombre / Handle</label> <input type="text" id="newLeadName" required
+                                    placeholder="@usuario">
+                                <label>Plataforma</label>
+                                <select id="newLeadPlatform">
+                                    <option value="Instagram">Instagram</option>
+                                    <option value="TikTok">TikTok</option>
+                                    <option value="YouTube">YouTube</option>
+                                </select>
+                                <label>Seguidores</label> <input type="number" id="newLeadFollowers" required
+                                    placeholder="Ej: 15000">
+                                <label>Promedio Views (Últ. 5 videos)</label> <input type="number" id="newLeadViews"
+                                    required placeholder="Ej: 3000">
+                            </div>
+                            <div>
+                                <label>Email (Obligatorio)</label> <input type="email" id="newLeadEmail" required
+                                    placeholder="contacto@...">
+                                <label>País</label> <input type="text" id="newLeadCountry" required
+                                    placeholder="Ej: Argentina">
+                                <label>Nicho</label>
+                                <select id="newLeadNiche">
+                                    <option value="Crypto">Crypto</option>
+                                    <option value="Finanzas">Finanzas</option>
+                                    <option value="Humor">Humor</option>
+                                    <option value="Lifestyle">Lifestyle</option>
+                                    <option value="Tech">Tecnología</option>
+                                    <option value="Política">Política</option>
+                                    <option value="Salud">Salud</option>
+                                    <option value="Familia">Familia</option>
+                                    <option value="Mascotas">Mascotas</option>
+                                    <option value="Otro">Otro</option>
+                                </select>
+                                <label>Link Perfil</label> <input type="url" id="newLeadUrl" required
+                                    placeholder="https://...">
+                            </div>
+                        </div>
+                        <div style="text-align:right; margin-top:1rem;">
+                            <button type="button" class="btn btn-outline"
+                                onclick="closeModal('createLeadModal')">Cancelar</button>
+                            <button type="submit" class="btn">Guardar</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Modal Registrar Acción -->
+            <div id="actionModal" class="modal">
+                <div class="modal-content">
+                    <h3>Registrar Avance</h3>
+                    <p id="actionLeadName" style="color:#9ca3af; margin-bottom:1rem;"></p>
+                    <form id="actionForm">
+                        <input type="hidden" id="actionLeadId">
+                        <label>Acción</label>
+                        <select id="actionType">
+                            <option value="initial_message">1. Primer Contacto</option>
+                            <option value="response_received">2. Respuesta Recibida</option>
+                            <option value="budget_received">3. Presupuesto Recibido</option>
+                            <option value="deal_closed">4. Cierre</option>
+                        </select>
+                        <label>Nuevo Estado</label>
+                        <select id="actionNewStatus">
+                            <option value="contacted">Contactado</option>
+                            <option value="negotiating">Negociando</option>
+                            <option value="closed">Cerrado</option>
+                        </select>
+                        <label>Presupuesto Acordado ($)</label>
+                        <input type="number" id="actionBudget" placeholder="Ej: 500 (Opcional)">
+                        <label>Notas</label> <textarea id="actionNotes" rows="2"></textarea>
+                        <label>Screenshot URL</label> <input type="text" id="actionScreenshotUrl">
+                        <div style="text-align:right;">
+                            <button type="button" class="btn btn-outline"
+                                onclick="closeModal('actionModal')">Cancelar</button>
+                            <button type="submit" class="btn">Registrar</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Admin Modals -->
+            <div id="createAgentModal" class="modal">
+                <div class="modal-content">
+                    <h3>Nuevo Agente</h3>
+                    <form id="createAgentForm"><label>Usuario</label><input id="agUser"
+                            placeholder="Usuario"><label>Contraseña</label><input id="agPass" type="password"
+                            placeholder="Pass">
+                        <div style="text-align:right;"><button type="button" class="btn btn-outline"
+                                onclick="closeModal('createAgentModal')">Cancelar</button> <button
+                                class="btn">Crear</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            <div id="assignAgentModal" class="modal">
+                <div class="modal-content">
+                    <h3>Asignar</h3>
+                    <form id="assignAgentForm"><label>Lead</label><select
+                            id="asLead"></select><label>Agente</label><select id="asAgent"></select>
+                        <div style="text-align:right;"><button type="button" class="btn btn-outline"
+                                onclick="closeModal('assignAgentModal')">Cancelar</button> <button
+                                class="btn">Asignar</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Modal Detalle Agente (Auditoría) -->
+            <div id="agentDetailModal" class="modal" style="display:none; z-index: 2200; background: rgba(0,0,0,0.95);">
+                <div class="modal-content" style="max-width: 900px; height: 90vh;">
+                    <div
+                        style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #374151; padding-bottom:1rem; margin-bottom:1rem;">
+                        <h3 id="auditAgentTitle" style="margin:0;">Auditoría</h3>
+                        <button class="btn btn-sm btn-outline" onclick="closeModal('agentDetailModal')">Cerrar</button>
+                    </div>
+
+                    <div class="grid" style="grid-template-columns: 1fr 1fr; gap:2rem; height: calc(100% - 60px);">
+                        <!-- LEADS -->
+                        <div style="display:flex; flex-direction:column; overflow:hidden;">
+                            <h4
+                                style="color:var(--primary); margin-top:0; border-bottom:1px solid #374151; padding-bottom:0.5rem;">
+                                📂 Leads Asignados</h4>
+                            <div id="auditLeadsList" style="overflow-y:auto; flex-grow:1; padding-right:0.5rem;"></div>
+                        </div>
+
+                        <!-- HISTORIAL -->
+                        <div
+                            style="display:flex; flex-direction:column; overflow:hidden; border-left:1px solid #374151; padding-left:1rem;">
+                            <h4
+                                style="color:var(--warning); margin-top:0; border-bottom:1px solid #374151; padding-bottom:0.5rem;">
+                                🕒 Historial de Acciones</h4>
+                            <div id="auditHistoryList" style="overflow-y:auto; flex-grow:1; padding-right:0.5rem;">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Gestión de Equipo -->
+            <div id="teamModal" class="modal" style="display:none; z-index: 2000;">
+                <div class="modal-content" style="max-width: 800px;">
+                    <div
+                        style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; border-bottom:1px solid #374151; padding-bottom:1rem;">
+                        <h3 style="margin:0;">👥 Gestión de Equipo</h3>
+                        <button class="btn btn-sm btn-outline" onclick="closeModal('teamModal')">Cerrar</button>
+                    </div>
+
+                    <div style="display:flex; gap:1rem; margin-bottom:1.5rem;">
+                        <button class="btn btn-sm" onclick="openModal('createAgentModal')">+ Nuevo Agente</button>
+                        <button class="btn btn-sm btn-outline" onclick="openModal('assignAgentModal')">Asignar
+                            Leads</button>
+                    </div>
+
+                    <table style="width:100%; border-collapse:collapse;">
+                        <thead style="background:#1f2937; color:#9ca3af;">
+                            <tr>
+                                <th style="padding:0.75rem; text-align:left;">Usuario</th>
+                                <th style="padding:0.75rem; text-align:left;">Rol</th>
+                                <th style="padding:0.75rem; text-align:left;">Fecha Alta</th>
+                                <th style="padding:0.75rem; text-align:right;">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="teamListBody">
+                            <tr>
+                                <td colspan="4" style="text-align:center; padding:1rem;">Cargando...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Modal Cambiar Contraseña -->
+            <div id="changePasswordModal" class="modal" style="display:none; z-index: 2500;">
+                <div class="modal-content" style="max-width: 400px;">
+                    <h3>🔑 Nueva Contraseña</h3>
+                    <p id="cpAgentName" style="color:#9ca3af; margin-bottom:1rem;"></p>
+                    <input type="hidden" id="cpAgentId">
+                    <input type="password" id="cpNewPass" placeholder="Nueva contraseña" style="margin-bottom:1rem;">
+                    <div style="display:flex; gap:0.5rem; justify-content:flex-end;">
+                        <button class="btn btn-outline" onclick="closeModal('changePasswordModal')">Cancelar</button>
+                        <button class="btn" onclick="submitNewPassword()">Guardar</button>
+                    </div>
+                </div>
+            </div>
+
+            <script>
+                const API_URL = 'http://localhost:4000/api';
+                let user = JSON.parse(localStorage.getItem('crm_user') || '{}');
+                const token = localStorage.getItem('crm_token');
+                let currentCampaignId = null;
+
+                if (!token) window.location.href = 'index.html';
+
+                // Inicialización
+                document.getElementById('userWelcome').textContent = `${user.username} (${user.role})`;
+                if (user.role === 'admin') {
+                    document.getElementById('adminScriptControls').style.display = 'flex';
+                    document.getElementById('adminButtons').style.display = 'flex';
+                }
+
+                // ================= CAMPAÑAS Y SCRIPTS =================
+                async function loadCampaigns() {
+                    try {
+                        const res = await fetch(`${API_URL}/campaigns`, { headers: { 'Authorization': `Bearer ${token}` } });
+                        const campaigns = await res.json();
+
+                        const select = document.getElementById('campaignSelect');
+                        select.innerHTML = '';
+
+                        if (campaigns.length > 0) {
+                            campaigns.forEach(c => {
+                                const opt = document.createElement('option');
+                                opt.value = c.id;
+                                opt.textContent = c.name;
+                                select.appendChild(opt);
+                            });
+                            // Cargar scripts de la primera campaña por defecto
+                            loadScripts(campaigns[0].id);
+                        } else {
+                            select.innerHTML = '<option>Sin campañas</option>';
+                            document.getElementById('scriptList').innerHTML = '<div style="text-align:center; padding:1rem; color:#6b7280;">No hay campañas activas</div>';
+                        }
+                    } catch (e) { console.error(e); }
+                }
+
+                async function loadScripts(campId) {
+                    currentCampaignId = campId;
+                    const list = document.getElementById('scriptList');
+                    list.innerHTML = '<div style="text-align:center; padding:1rem;">Cargando...</div>';
+
+                    try {
+                        const res = await fetch(`${API_URL}/campaigns/${campId}/scripts`, { headers: { 'Authorization': `Bearer ${token}` } });
+                        const scripts = await res.json();
+
+                        list.innerHTML = '';
+                        if (scripts.length === 0) {
+                            list.innerHTML = '<div style="text-align:center; padding:1rem; color:#6b7280;">No hay mensajes en esta campaña</div>';
+                            return;
+                        }
+
+                        scripts.forEach(s => {
+                            const isAdmin = user.role === 'admin';
+                            const item = document.createElement('div');
+                            item.className = 'script-card';
+
+                            // Render HTML
+                            item.innerHTML = `
+                        <div class="script-header">
+                            <span class="script-title">${s.title}</span>
+                            <div class="script-actions">
+                                <button class="icon-btn copy" title="Copiar"><i class="ph ph-copy"></i></button>
+                                ${isAdmin ? `
+                                    <button class="icon-btn edit" title="Editar"><i class="ph ph-pencil"></i></button>
+                                    <button class="icon-btn delete" title="Borrar"><i class="ph ph-trash"></i></button>
+                                ` : ''}
+                            </div>
+                        </div>
+                        <div class="script-content">
+                            ${s.content}
+                        </div>
+                    `;
+
+                            // Add Logic Listeners (Safe method)
+                            // Toggle View
+                            const contentEl = item.querySelector('.script-content');
+                            contentEl.addEventListener('click', () => contentEl.classList.toggle('expanded'));
+
+                            // Copy
+                            item.querySelector('.copy').addEventListener('click', (e) => {
+                                e.stopPropagation(); // Prevent toggle
+                                copyText(s.content);
+                            });
+
+                            if (isAdmin) {
+                                // Edit
+                                item.querySelector('.edit').addEventListener('click', (e) => {
+                                    e.stopPropagation();
+                                    editScript(s.id, s.title, s.content);
+                                });
+                                // Delete
+                                item.querySelector('.delete').addEventListener('click', (e) => {
+                                    e.stopPropagation();
+                                    deleteScript(s.id);
+                                });
+                            }
+
+                            list.appendChild(item);
+                        });
+                    } catch (e) { console.error(e); }
+                }
+
+                // Crear Campaña
+                document.getElementById('createCampaignForm').addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const name = document.getElementById('newCampName').value;
+                    const desc = document.getElementById('newCampDesc').value;
+                    await fetch(`${API_URL}/campaigns`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                        body: JSON.stringify({ name, description: desc })
+                    });
+                    closeModal('createCampaignModal');
+                    loadCampaigns();
+                });
+
+                // Crear/Editar Script
+                window.openScriptModal = (mode) => {
+                    document.getElementById('scriptModalTitle').textContent = mode === 'create' ? 'Nuevo Mensaje' : 'Editar Mensaje';
+                    if (mode === 'create') {
+                        document.getElementById('scriptId').value = '';
+                        document.getElementById('scriptTitle').value = '';
+                        document.getElementById('scriptContent').value = '';
+                    }
+                    openModal('scriptModal');
+                };
+
+                window.editScript = (id, title, content) => {
+                    document.getElementById('scriptId').value = id;
+                    document.getElementById('scriptTitle').value = title;
+                    document.getElementById('scriptContent').value = content;
+                    document.getElementById('scriptModalTitle').textContent = 'Editar Mensaje';
+                    openModal('scriptModal');
+                };
+
+                document.getElementById('scriptForm').addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const id = document.getElementById('scriptId').value;
+                    const title = document.getElementById('scriptTitle').value;
+                    const content = document.getElementById('scriptContent').value;
+
+                    const method = id ? 'PUT' : 'POST';
+                    const url = id
+                        ? `${API_URL}/campaigns/scripts/${id}`
+                        : `${API_URL}/campaigns/${currentCampaignId}/scripts`;
+
+                    await fetch(url, {
+                        method: method,
+                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                        body: JSON.stringify({ title, content })
+                    });
+
+                    closeModal('scriptModal');
+                    loadScripts(currentCampaignId);
+                });
+
+                window.deleteScript = async (id) => {
+                    if (!confirm('¿Borrar este mensaje?')) return;
+                    await fetch(`${API_URL}/campaigns/scripts/${id}`, {
+                        method: 'DELETE',
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    loadScripts(currentCampaignId);
+                };
+
+                // Utilidades
+                window.copyText = async (text) => {
+                    try {
+                        await navigator.clipboard.writeText(text);
+                        // Tiny animation or feedback
+                        const el = document.activeElement;
+                        const original = el.innerHTML;
+                        el.innerHTML = '<i class="ph ph-check"></i>';
+                        setTimeout(() => el.innerHTML = original, 1000);
+                    } catch (err) { alert('Error al copiar'); }
+                };
+
+                window.openModal = (id) => document.getElementById(id).style.display = 'flex';
+                window.closeModal = (id) => document.getElementById(id).style.display = 'none';
+
+                // ================= LEADS =================
+                async function loadLeads() {
+                    const grid = document.getElementById('leadsGrid');
+                    try {
+                        const res = await fetch(`${API_URL}/influencers`, { headers: { 'Authorization': `Bearer ${token}` } });
+                        const leads = await res.json();
+                        grid.innerHTML = '';
+
+                        if (leads.length === 0) {
+                            grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:3rem; color:#94a3b8;">No tienes leads asignados. ¡Crea uno nuevo!</div>';
+                            return;
+                        }
+
+                        leads.forEach(l => {
+                            const div = document.createElement('div');
+                            div.className = 'card';
+                            div.innerHTML = `
+                        <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem;">
+                            <h3 style="margin:0; font-size:1.1rem;">${l.name}</h3>
+                            <span class="status-badge status-${l.status}">${l.status}</span>
+                        </div>
+                        <p style="color:#9ca3af;font-size:0.9rem; margin:0 0 1rem 0;">
+                            <i class="ph ph-users"></i> ${l.followers_count || '?'} • ${l.platform}
+                        </p>
+                        <a href="${l.profile_url}" target="_blank" style="color:var(--primary); display:block; margin:0.5rem 0; font-size:0.9rem; text-decoration:none;">Ver Perfil ↗</a>
+                        
+                        <div style="margin-top:1rem;">
+                            <button class="btn btn-sm" onclick="openActionModal(${l.id}, '${l.name}')" style="width:100%;">Registrar Avance</button>
+                        </div>
+                    `;
+                            grid.appendChild(div);
+                        });
+                    } catch (e) { console.error(e); }
+                }
+
+                // Reportes (Supervisión)
+                window.openReportModal = async () => {
+                    document.getElementById('reportsModal').style.display = 'flex';
+                    await loadReports();
+                };
+
+                async function loadReports() {
+                    try {
+                        // Cargar Stats
+                        const statsRes = await fetch(`${API_URL}/reports/stats`, { headers: { 'Authorization': `Bearer ${token}` } });
+                        const stats = await statsRes.json();
+                        document.getElementById('kpiTotal').textContent = stats.total_leads;
+                        document.getElementById('kpiToday').textContent = stats.today_activity;
+                        document.getElementById('kpiClosed').textContent = stats.closed_deals;
+
+                        // Cargar Leaderboard
+                        try {
+                            const lbRes = await fetch(`${API_URL}/reports/leaderboard`, { headers: { 'Authorization': `Bearer ${token}` } });
+                            const leaderboard = await lbRes.json();
+                            const lbBody = document.getElementById('leaderboardBody');
+                            if (lbBody) {
+                                lbBody.innerHTML = '';
+                                if (leaderboard.length === 0) {
+                                    lbBody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:1rem;">Sin datos aún</td></tr>';
+                                } else {
+                                    leaderboard.forEach(ag => {
+                                        const tr = document.createElement('tr');
+                                        tr.style.borderBottom = '1px solid #374151';
+                                        const lastActive = ag.last_activity
+                                            ? new Date(ag.last_activity).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+                                            : '-';
+
+                                        tr.innerHTML = `
+                                    <td style="padding:0.75rem; font-weight:bold;">
+                                        <a href="#" onclick="openAgentAudit(${ag.agent_id}); return false;" style="color:var(--primary); text-decoration:none;">${ag.username} ↗</a>
+                                    </td>
+                                    <td style="padding:0.75rem; text-align:center;">${ag.assigned_leads || 0}</td>
+                                    <td style="padding:0.75rem; text-align:center;">${ag.closed_deals || 0}</td>
+                                    <td style="padding:0.75rem; text-align:right; color:#9ca3af;">${lastActive}</td>
+                                `;
+                                        lbBody.appendChild(tr);
+                                    });
+                                }
+                            }
+                        } catch (e) { console.error('Error leaderboard', e); }
+
+                        // Cargar Feed
+                        const feedRes = await fetch(`${API_URL}/reports/feed`, { headers: { 'Authorization': `Bearer ${token}` } });
+                        const feed = await feedRes.json();
+                        const tbody = document.getElementById('activityTableBody');
+                        tbody.innerHTML = '';
+
+                        if (feed.length === 0) {
+                            tbody.innerHTML = '<tr><td colspan="5" style="padding:1rem; text-align:center; color:#9ca3af;">Sin actividad reciente</td></tr>';
+                            return;
+                        }
+
+                        feed.forEach(log => {
+                            const row = document.createElement('tr');
+                            row.style.borderBottom = '1px solid #374151';
+                            const date = new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+                            row.innerHTML = `
+                        <td style="padding:0.75rem; color:#9ca3af;">${date}</td>
+                        <td style="padding:0.75rem; font-weight:bold;">${log.agent_name}</td>
+                        <td style="padding:0.75rem;">${log.influencer_name} <span style="font-size:0.8rem; color:#6b7280;">(${log.platform})</span></td>
+                        <td style="padding:0.75rem;"><span class="status-badge status-pending">${log.action_type}</span></td>
+                        <td style="padding:0.75rem; color:#d1d5db; max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${log.notes || '-'}</td>
+                    `;
+                            tbody.appendChild(row);
+                        });
+
+                    } catch (e) { console.error("Error reports", e); }
+                }
+
+                // AUDITORÍA DE AGENTE
+                window.openAgentAudit = async (agentId) => {
+                    document.getElementById('agentDetailModal').style.display = 'flex';
+                    document.getElementById('auditAgentTitle').textContent = 'Cargando...';
+                    document.getElementById('auditLeadsList').innerHTML = '<div style="padding:1rem;">Cargando...</div>';
+                    document.getElementById('auditHistoryList').innerHTML = '<div style="padding:1rem;">Cargando...</div>';
+
+                    try {
+                        const res = await fetch(`${API_URL}/reports/agent/${agentId}`, { headers: { 'Authorization': `Bearer ${token}` } });
+                        const data = await res.json();
+
+                        if (data.error) return alert(data.error);
+
+                        // 1. Header
+                        document.getElementById('auditAgentTitle').textContent = `Auditoría: ${data.agent.username}`;
+
+                        // 2. Leads List
+                        const leadsContainer = document.getElementById('auditLeadsList');
+                        leadsContainer.innerHTML = '';
+                        if (data.leads.length === 0) {
+                            leadsContainer.innerHTML = '<div style="padding:1rem; color:#6b7280;">Sin leads asignados</div>';
+                        } else {
+                            data.leads.forEach(l => {
+                                const item = document.createElement('div');
+                                item.style.padding = '0.75rem';
+                                item.style.borderBottom = '1px solid #374151';
+                                item.style.background = '#1e293b';
+                                item.style.marginBottom = '0.5rem';
+                                item.style.borderRadius = '0.375rem';
+                                item.innerHTML = `
+                            <div style="font-weight:bold; display:flex; justify-content:space-between;">
+                                ${l.name} <span class="status-badge status-${l.status}" style="font-size:0.7rem;">${l.status}</span>
+                            </div>
+                            <div style="font-size:0.85rem; color:#9ca3af;">${l.platform} • ${l.followers_count} segs</div>
+                            <a href="${l.profile_url}" target="_blank" style="font-size:0.8rem; color:var(--primary);">Ver Perfil</a>
+                        `;
+                                leadsContainer.appendChild(item);
+                            });
+                        }
+
+                        // 3. History Timeline
+                        const historyContainer = document.getElementById('auditHistoryList');
+                        historyContainer.innerHTML = '';
+                        if (data.history.length === 0) {
+                            historyContainer.innerHTML = '<div style="padding:1rem; color:#6b7280;">Sin actividad registrada</div>';
+                        } else {
+                            data.history.forEach(h => {
+                                const time = new Date(h.created_at).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+                                const item = document.createElement('div');
+                                item.style.padding = '0.75rem';
+                                item.style.borderLeft = '2px solid var(--warning)';
+                                item.style.background = '#1e293b';
+                                item.style.marginBottom = '0.5rem';
+                                item.style.marginLeft = '0.5rem';
+                                item.innerHTML = `
+                            <div style="font-size:0.8rem; color:#6b7280; margin-bottom:0.25rem;">${time}</div>
+                            <div style="font-weight:bold; color:#e2e8f0;">${h.type.replace('_', ' ').toUpperCase()}</div>
+                            <input type="text" value="${h.influencer_name}" disabled style="background:transparent; border:none; color:var(--primary); padding:0; margin:0; font-size:0.9rem; font-weight:600;">
+                            <div style="font-size:0.9rem; color:#cbd5e1; margin-top:0.25rem; font-style:italic;">"${h.notes || ''}"</div>
+                            ${h.screenshot_url ? `<a href="${h.screenshot_url}" target="_blank" style="font-size:0.8rem; color:#60a5fa; display:block; margin-top:0.5rem;">📷 Ver Screenshot</a>` : ''}
+                        `;
+                                historyContainer.appendChild(item);
+                            });
+                        }
+
+                    } catch (err) {
+                        console.error(err);
+                        alert('Error cargando detalle de agente');
+                    }
+                };
+
+                // ======= GESTIÓN DE EQUIPO =======
+                window.openTeamModal = async () => {
+                    document.getElementById('teamModal').style.display = 'flex';
+                    await loadTeam();
+                };
+
+                async function loadTeam() {
+                    try {
+                        const res = await fetch(`${API_URL}/auth/agents`, { headers: { 'Authorization': `Bearer ${token}` } });
+                        const agents = await res.json();
+                        const tbody = document.getElementById('teamListBody');
+                        tbody.innerHTML = '';
+
+                        if (agents.length === 0) {
+                            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:1rem; color:#9ca3af;">Sin agentes registrados</td></tr>';
+                            return;
+                        }
+
+                        agents.forEach(a => {
+                            const row = document.createElement('tr');
+                            row.style.borderBottom = '1px solid #374151';
+                            const joined = new Date(a.created_at).toLocaleDateString();
+
+                            row.innerHTML = `
+                        <td style="padding:0.75rem; font-weight:bold;">${a.username}</td>
+                        <td style="padding:0.75rem; color:#9ca3af; text-transform:capitalize;">${a.role}</td>
+                        <td style="padding:0.75rem; color:#6b7280;">${joined}</td>
+                        <td style="padding:0.75rem; text-align:right;">
+                            <button class="icon-btn" onclick="openChangePass(${a.id}, '${a.username}')" title="Cambiar Contraseña"><i class="ph ph-key"></i> 🔑</button>
+                            <button class="icon-btn" onclick="deleteAgent(${a.id})" title="Eliminar" style="color:#ef4444;"><i class="ph ph-trash"></i> 🗑️</button>
+                        </td>
+                    `;
+                            tbody.appendChild(row);
+                        });
+                    } catch (err) { console.error('Error cargando equipo', err); }
+                }
+
+                window.deleteAgent = async (id) => {
+                    if (!confirm('⚠️ ¿Estás seguro de eliminar este agente?\nSus leads quedarán sin asignar.')) return;
+                    try {
+                        await fetch(`${API_URL}/auth/agents/${id}`, {
+                            method: 'DELETE',
+                            headers: { 'Authorization': `Bearer ${token}` }
+                        });
+                        loadTeam();
+                    } catch (err) { alert('Error eliminando agente'); }
+                };
+
+                window.openChangePass = (id, name) => {
+                    document.getElementById('cpAgentId').value = id;
+                    document.getElementById('cpAgentName').textContent = `Agente: ${name}`;
+                    document.getElementById('cpNewPass').value = '';
+                    document.getElementById('changePasswordModal').style.display = 'flex';
+                };
+
+                window.submitNewPassword = async () => {
+                    const id = document.getElementById('cpAgentId').value;
+                    const newPass = document.getElementById('cpNewPass').value;
+                    if (!newPass) return alert('Ingresa una contraseña');
+
+                    try {
+                        await fetch(`${API_URL}/auth/agents/${id}/password`, {
+                            method: 'PATCH',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${token}`
+                            },
+                            body: JSON.stringify({ newPassword: newPass })
+                        });
+                        alert('Contraseña actualizada');
+                        closeModal('changePasswordModal');
+                    } catch (err) { alert('Error actualizando contraseña'); }
+                };
+
+                // Listeners Formularios Lead/Agente (Sin cambios de lógica)
+                window.openActionModal = (id, name) => {
+                    document.getElementById('actionLeadId').value = id;
+                    document.getElementById('actionLeadName').textContent = name;
+                    openModal('actionModal');
+                };
+
+                // Initialize Listeners for Forms (simplified for brevity but functional)
+                document.getElementById('createLeadForm').addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const data = {
+                        name: document.getElementById('newLeadName').value,
+                        platform: document.getElementById('newLeadPlatform').value,
+                        profile_url: document.getElementById('newLeadUrl').value,
+                        followers_count: document.getElementById('newLeadFollowers').value,
+                        avg_views: document.getElementById('newLeadViews').value,
+                        email: document.getElementById('newLeadEmail').value,
+                        country: document.getElementById('newLeadCountry').value,
+                        niche: document.getElementById('newLeadNiche').value
+                    };
+
+                    try {
+                        const res = await fetch(`${API_URL}/influencers`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                            body: JSON.stringify(data)
+                        });
+
+                        if (!res.ok) {
+                            const err = await res.json();
+                            return alert(err.error || 'Error creando lead');
+                        }
+
+                        closeModal('createLeadModal');
+                        loadLeads();
+                    } catch (e) { alert('Error de conexión'); }
+                });
+
+                document.getElementById('actionForm').addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const data = {
+                        leadIds: [document.getElementById('actionLeadId').value],
+                        type: document.getElementById('actionType').value,
+                        new_status: document.getElementById('actionNewStatus').value,
+                        notes: document.getElementById('actionNotes').value,
+                        screenshot_url: document.getElementById('actionScreenshotUrl').value,
+                        budget_offer: document.getElementById('actionBudget').value || null
+                    };
+                    await fetch(`${API_URL}/influencers/interactions`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(data) });
+                    closeModal('actionModal'); loadLeads();
+                });
+
+                document.getElementById('createAgentForm').addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const u = document.getElementById('agUser').value; const p = document.getElementById('agPass').value;
+                    await fetch(`${API_URL}/auth/register`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ username: u, password: p, role: 'agent' }) });
+                    closeModal('createAgentModal');
+                });
+
+                document.getElementById('logoutBtn').addEventListener('click', () => { localStorage.clear(); location.href = 'index.html'; });
+
+                // ======= DASHBOARD ADMIN (SUPER VISIÓN) =======
+                async function loadAgentsDashboard() {
+                    const grid = document.getElementById('agentsGrid');
+                    grid.innerHTML = '<div style="text-align:center; padding:2rem; width:100%;">Cargando métricas del equipo...</div>';
+
+                    try {
+                        const res = await fetch(`${API_URL}/reports/leaderboard`, { headers: { 'Authorization': `Bearer ${token}` } });
+                        const agents = await res.json();
+
+                        grid.innerHTML = '';
+                        if (agents.length === 0) {
+                            grid.innerHTML = '<div style="text-align:center; padding:2rem; width:100%;">No hay agentes registrados.</div>';
+                            return;
+                        }
+
+                        agents.forEach(ag => {
+                            const lastActive = ag.last_activity
+                                ? new Date(ag.last_activity).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+                                : 'Sin actividad';
+
+                            const card = document.createElement('div');
+                            card.className = 'card';
+                            card.style.cursor = 'pointer';
+                            card.style.transition = 'transform 0.2s, border 0.2s';
+                            card.onmouseover = () => { card.style.transform = 'translateY(-3px)'; card.style.borderColor = 'var(--primary)'; };
+                            card.onmouseout = () => { card.style.transform = 'none'; card.style.borderColor = 'transparent'; };
+                            card.onclick = () => openAgentAudit(ag.agent_id);
+
+                            card.innerHTML = `
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <h3 style="margin:0;">${ag.username}</h3>
+                            <span style="font-size:1.2rem;">👤</span>
+                        </div>
+                        <div style="margin-top:1.5rem; display:grid; grid-template-columns: 1fr 1fr; gap:1rem; text-align:center;">
+                            <div style="padding:0.5rem; background:#1f2937; border-radius:0.5rem;">
+                                <div style="font-size:0.8rem; color:#9ca3af;">Leads</div>
+                                <div style="font-size:1.5rem; font-weight:bold;">${ag.assigned_leads}</div>
+                            </div>
+                            <div style="padding:0.5rem; background:#1f2937; border-radius:0.5rem;">
+                                <div style="font-size:0.8rem; color:#9ca3af;">Ventas</div>
+                                <div style="font-size:1.5rem; font-weight:bold; color:var(--success);">${ag.closed_deals}</div>
+                            </div>
+                        </div>
+                        <div style="margin-top:1rem; padding-top:1rem; border-top:1px solid #374151; font-size:0.85rem; color:#9ca3af; display:flex; justify-content:space-between;">
+                            <span>Última vez:</span>
+                            <span style="color:#e2e8f0;">${lastActive}</span>
+                        </div>
+                    `;
+                            grid.appendChild(card);
+                        });
+                    } catch (e) { console.error(e); grid.innerHTML = 'Error cargando dashboard.'; }
+                }
+
+                // ======= LOGICA PERFIL AGENTE =======
+                let currentAgentData = { leads: [], history: [] };
+
+                window.openAgentAudit = async (agentId) => {
+                    document.getElementById('adminDashboardView').style.display = 'none';
+                    document.getElementById('agentDashboardView').style.display = 'none';
+                    document.getElementById('agentFullProfileView').style.display = 'block';
+
+                    // Reset UI
+                    document.getElementById('fpAgentName').textContent = 'Cargando...';
+                    document.getElementById('fpLeadsBody').innerHTML = '<tr><td colspan="5" style="text-align:center; padding:2rem;">Cargando datos...</td></tr>';
+                    document.getElementById('fpInspectorContent').innerHTML = '<div style="text-align:center; color:#9ca3af;">Cargando feed...</div>';
+
+                    try {
+                        const res = await fetch(`${API_URL}/reports/agent/${agentId}`, { headers: { 'Authorization': `Bearer ${token}` } });
+                        const data = await res.json();
+
+                        if (data.error) { alert(data.error); initDashboard(); return; }
+
+                        currentAgentData = data;
+
+                        // Header
+                        document.getElementById('fpAgentName').textContent = data.agent.username;
+                        document.getElementById('fpAgentId').textContent = data.agent.id;
+                        document.getElementById('fpAgentJoined').textContent = new Date(data.agent.created_at).toLocaleDateString();
+
+                        // KPIs
+                        const total = data.leads.length;
+                        const contacted = data.leads.filter(l => l.status === 'contacted' || l.status === 'negotiating' || l.status === 'closed').length;
+                        const closed = data.leads.filter(l => l.status === 'closed').length;
+                        const conversion = total > 0 ? ((closed / total) * 100).toFixed(1) : '0.0';
+
+                        document.getElementById('fpStatTotal').textContent = total;
+                        document.getElementById('fpStatContacted').textContent = contacted;
+                        document.getElementById('fpStatClosed').textContent = closed;
+                        document.getElementById('fpStatConversion').textContent = conversion + '%';
+
+                        // Render Tables
+                        renderAgentLeads(data.leads);
+                        renderHistoryFeed(data.history, '📡 Feed Global');
+
+                    } catch (err) {
+                        console.error(err);
+                        initDashboard();
+                    }
+                };
+
+                function renderAgentLeads(leads) {
+                    const tbody = document.getElementById('fpLeadsBody');
+                    tbody.innerHTML = '';
+
+                    if (leads.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:2rem; color:#9ca3af;">Sin leads asignados</td></tr>';
+                        return;
+                    }
+
+                    leads.forEach(l => {
+                        const tr = document.createElement('tr');
+                        tr.style.borderBottom = '1px solid #374151';
+                        tr.style.cursor = 'pointer';
+                        tr.onmouseover = () => tr.style.background = '#1f2937';
+                        tr.onmouseout = () => tr.style.background = 'transparent';
+                        tr.onclick = () => showLeadDetails(l.id, l.name);
+
+                        tr.innerHTML = `
+                    <td style="padding:0.75rem; font-weight:bold;">${l.name}</td>
+                    <td style="padding:0.75rem;"><span style="font-size:0.8rem; color:#9ca3af;">${l.platform}</span><br><span style="font-size:0.75rem; color:#6b7280;">${l.country || '-'}</span></td>
+                    <td style="padding:0.75rem; text-align:center;"><span class="badge" style="background:#374151;">${l.niche || '-'}</span></td>
+                    <td style="padding:0.75rem; text-align:center;"><span class="status-badge status-${l.status}" style="font-size:0.8rem;">${l.status}</span></td>
+                    <td style="padding:0.75rem; text-align:right;">
+                        <a href="${l.profile_url}" target="_blank" onclick="event.stopPropagation()" style="color:var(--primary); font-size:0.8rem;">🔗 Link</a>
+                    </td>
+                `;
+                        tbody.appendChild(tr);
+                    });
+                }
+
+                function renderHistoryFeed(history, title) {
+                    const container = document.getElementById('fpInspectorContent');
+                    document.getElementById('fpInspectorTitle').textContent = title;
+                    container.innerHTML = '';
+
+                    if (history.length === 0) {
+                        container.innerHTML = '<div style="text-align:center; padding:2rem; color:#6b7280;">Sin actividad registrada.</div>';
+                        return;
+                    }
+
+                    history.forEach(h => {
+                        const time = new Date(h.created_at).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+                        const typeLabel = h.type === 'initial_message' ? 'PRIMER CONTACTO' : h.type.replace(/_/g, ' ').toUpperCase();
+
+                        const item = document.createElement('div');
+                        item.style.padding = '0.75rem';
+                        item.style.background = '#1e293b';
+                        item.style.borderRadius = '0.5rem';
+                        item.style.borderLeft = `3px solid ${h.type.includes('message') ? 'var(--primary)' : 'var(--warning)'}`;
+
+                        item.innerHTML = `
+                    <div style="display:flex; justify-content:space-between; font-size:0.75rem; color:#9ca3af; margin-bottom:0.25rem;">
+                        <span>${time}</span>
+                        ${title.includes('Global') ? `<span style="color:#e2e8f0;">${h.influencer_name}</span>` : ''}
+                    </div>
+                    <div style="font-weight:bold; color:#f3f4f6; font-size:0.9rem;">${typeLabel}</div>
+                    <div style="color:#d1d5db; font-size:0.85rem; margin-top:0.25rem; font-style:italic;">"${h.notes || ''}"</div>
+                    ${h.screenshot_url ? `<a href="${h.screenshot_url}" target="_blank" style="display:block; margin-top:0.5rem; font-size:0.75rem; color:#60a5fa;">📷 Ver Evidencia</a>` : ''}
+                `;
+                        container.appendChild(item);
+                    });
+                }
+
+                window.showLeadDetails = (leadId, leadName) => {
+                    const leadHistory = currentAgentData.history.filter(h => h.influencer_id == leadId);
+                    renderHistoryFeed(leadHistory, `📜 Historial: ${leadName}`);
+                };
+
+                window.filterAgentLeads = (text) => {
+                    const term = text.toLowerCase();
+                    const filtered = currentAgentData.leads.filter(l =>
+                        l.name.toLowerCase().includes(term) ||
+                        (l.niche && l.niche.toLowerCase().includes(term)) ||
+                        (l.country && l.country.toLowerCase().includes(term)) ||
+                        l.status.includes(term)
+                    );
+                    renderAgentLeads(filtered);
+                };
+
+                function initDashboard() {
+                    loadCampaigns();
+                    document.getElementById('agentFullProfileView').style.display = 'none';
+
+                    if (user.role === 'admin') {
+                        document.getElementById('adminDashboardView').style.display = 'block';
+                        document.getElementById('agentDashboardView').style.display = 'none';
+                        loadAgentsDashboard();
+                    } else {
+                        document.getElementById('adminDashboardView').style.display = 'none';
+                        document.getElementById('agentDashboardView').style.display = 'block';
+                        loadLeads();
+                    }
+                }
+
+                // Iniciar
+                initDashboard();
+            </script>
+            <style>
+                /* MOBILE RESPONSIVE OVERRIDES */
+                #mobileScriptToggle {
+                    display: none;
+                    /* Hide on Desktop */
+                    width: 100%;
+                    padding: 1rem;
+                    background: #1f2937;
+                    color: white;
+                    border: none;
+                    border-bottom: 1px solid #374151;
+                    font-size: 1rem;
+                    font-weight: bold;
+                    cursor: pointer;
+                    text-align: center;
+                }
+
+                @media (max-width: 768px) {
+                    body {
+                        flex-direction: column;
+                        overflow-y: auto;
+                        height: auto;
+                    }
+
+                    /* Sidebar Hidden by Default */
+                    .sidebar {
+                        width: 100%;
+                        height: auto;
+                        max-height: 0;
+                        overflow: hidden;
+                        transition: max-height 0.3s ease-in-out;
+                        border-bottom: 1px solid #374151;
+                        border-right: none;
+                        flex-shrink: 0;
+                    }
+
+                    /* Sidebar Visible when Active */
+                    .sidebar.active {
+                        max-height: 60vh;
+                        /* 60% of screen */
+                        overflow-y: auto;
+                        border-bottom: 2px solid var(--primary);
+                    }
+
+                    /* Toggle Button Visible */
+                    #mobileScriptToggle {
+                        display: block;
+                    }
+
+                    .main-content {
+                        padding: 1rem;
+                        height: auto;
+                        overflow: visible;
+                        width: 100%;
+                    }
+
+                    /* Single Column Grid */
+                    .grid {
+                        grid-template-columns: 1fr;
+                    }
+
+                    /* Header Stack */
+                    header {
+                        flex-direction: column;
+                        gap: 1rem;
+                        align-items: flex-start;
+                    }
+
+                    header>div {
+                        width: 100%;
+                        display: flex;
+                        flex-direction: column;
+                        gap: 0.5rem;
+                    }
+
+                    /* Big Buttons */
+                    .btn {
+                        width: 100%;
+                        padding: 0.75rem;
+                        font-size: 1rem;
+                    }
+
+                    /* Full Screen Modals */
+                    .modal-content {
+                        width: 100%;
+                        height: 100%;
+                        max-width: none;
+                        border-radius: 0;
+                        padding: 1rem;
+                        overflow-y: auto;
+                        margin: 0;
+                    }
+
+                    /* Better Inputs */
+                    input,
+                    select,
+                    textarea {
+                        font-size: 16px;
+                        /* Stop iOS zoom */
+                        padding: 0.8rem;
+                    }
+                }
+            </style>
+</body>
+
+</html>
