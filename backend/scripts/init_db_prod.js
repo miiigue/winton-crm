@@ -33,6 +33,20 @@ async function initDB() {
             );
         `);
 
+        // 2.5 MIGRACIÓN AUTOMÁTICA: Agregar columnas nuevas a influencers
+        try {
+            await pool.query(`
+                ALTER TABLE influencers 
+                ADD COLUMN IF NOT EXISTS country VARCHAR(100),
+                ADD COLUMN IF NOT EXISTS niche VARCHAR(100),
+                ADD COLUMN IF NOT EXISTS avg_views INTEGER DEFAULT 0,
+                ADD COLUMN IF NOT EXISTS email VARCHAR(150);
+            `);
+            console.log('✅ Columnas extra verificadas en influencers.');
+        } catch (e) {
+            console.log('ℹ️ Nota: Error menor verificando columnas influencers:', e.message);
+        }
+
         // 3. Tabla de Interacciones
         await pool.query(`
             CREATE TABLE IF NOT EXISTS interactions (
