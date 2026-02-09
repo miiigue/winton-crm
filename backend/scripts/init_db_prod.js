@@ -57,6 +57,17 @@ async function initDB() {
             );
         `);
 
+        // 4.5 MIGRACIÓN AUTOMÁTICA: Agregar target_config si no existe
+        try {
+            await pool.query(`
+                ALTER TABLE campaigns 
+                ADD COLUMN IF NOT EXISTS target_config JSONB DEFAULT '{}';
+            `);
+            console.log('✅ Columna target_config verificada en campaigns.');
+        } catch (e) {
+            console.log('ℹ️ Nota: Error menor verificando columna target_config (probablemente ya existe o permisos):', e.message);
+        }
+
         // 5. Tabla de Scripts
         await pool.query(`
             CREATE TABLE IF NOT EXISTS scripts (
