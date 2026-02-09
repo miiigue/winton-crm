@@ -308,6 +308,23 @@
                     <option value="">Cargando...</option>
                 </select>
 
+                <!-- Mission Card (Target Info) -->
+                <div id="missionCard"
+                    style="display:none; background:#1e293b; padding:0.75rem; border-radius:0.5rem; border-left:3px solid var(--primary); margin-bottom:1rem; font-size:0.85rem;">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:0.25rem;">
+                        <span id="mcPlatform" style="font-weight:bold;">📱 -</span>
+                        <span id="mcGeo">🌍 -</span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between;">
+                        <span id="mcFollowers">👥 -</span>
+                        <span id="mcBudget" style="color:var(--success);">💰 -</span>
+                    </div>
+                    <div id="mcNiche"
+                        style="margin-top:0.4rem; padding-top:0.4rem; border-top:1px solid #374151; color:#94a3b8; font-style:italic;">
+                        🎯 -
+                    </div>
+                </div>
+
                 <!-- Solo Admin -->
                 <div id="adminScriptControls" style="display:none; gap: 0.5rem;">
                     <button id="addCampaignBtn" class="btn btn-sm btn-outline"
@@ -543,8 +560,32 @@
                     <form id="createCampaignForm">
                         <label>Nombre de la Campaña</label>
                         <input type="text" id="newCampName" required placeholder="Ej: Febrero 2026 - TikTok">
-                        <label>Descripción</label>
+                        <label>Descripción (Objetivo General)</label>
                         <textarea id="newCampDesc" rows="2"></textarea>
+
+                        <h4 style="margin: 1rem 0 0.5rem; color: var(--primary); border-bottom: 1px solid #374151;">🎯
+                            Misión / Target</h4>
+
+                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.75rem;">
+                            <div>
+                                <label>Plataforma(s)</label>
+                                <input type="text" id="targetPlatform" placeholder="Ej: TikTok, Instagram">
+                            </div>
+                            <div>
+                                <label>Ubicación (GEO)</label>
+                                <input type="text" id="targetGeo" placeholder="Ej: España, LATAM">
+                            </div>
+                            <div>
+                                <label>Rango Seguidores</label>
+                                <input type="text" id="targetFollowers" placeholder="Ej: 10k - 50k">
+                            </div>
+                            <div>
+                                <label>Presupuesto (USD)</label>
+                                <input type="text" id="targetBudget" placeholder="Ej: $50 - $150">
+                            </div>
+                        </div>
+                        <label>Nicho / Vertical</label>
+                        <input type="text" id="targetNiche" placeholder="Ej: Cripto, Finanzas, Lifestyle">
                         <div style="text-align:right;">
                             <button type="button" class="btn btn-outline"
                                 onclick="closeModal('createCampaignModal')">Cancelar</button>
@@ -779,10 +820,13 @@
                 }
 
                 // ================= CAMPAÑAS Y SCRIPTS =================
+                let campaignsCache = []; // Cache para info de target
+
                 async function loadCampaigns() {
                     try {
                         const res = await fetch(`${API_URL}/campaigns`, { headers: { 'Authorization': `Bearer ${token}` } });
                         const campaigns = await res.json();
+                        campaignsCache = campaigns;
 
                         const select = document.getElementById('campaignSelect');
                         select.innerHTML = '';
@@ -799,12 +843,40 @@
                         } else {
                             select.innerHTML = '<option>Sin campañas</option>';
                             document.getElementById('scriptList').innerHTML = '<div style="text-align:center; padding:1rem; color:#6b7280;">No hay campañas activas</div>';
+                            document.getElementById('missionCard').style.display = 'none';
                         }
                     } catch (e) { console.error(e); }
                 }
 
+                function updateMissionCard(campId) {
+                    const campaign = campaignsCache.find(c => c.id == campId);
+                    const card = document.getElementById('missionCard');
+
+                    if (!campaign || !campaign.target_config || Object.keys(campaign.target_config).length === 0) {
+                        card.style.display = 'none';
+                        return;
+                    }
+
+                    const t = campaign.target_config;
+                    document.getElementById('mcPlatform').textContent = t.platform ? `📱 ${t.platform}` : '📱 Multi-plataforma';
+                    document.getElementById('mcGeo').textContent = t.geo ? `🌍 ${t.geo}` : '🌍 Global';
+                    document.getElementById('mcFollowers').textContent = t.followers ? `👥 ${t.followers}` : '👥 Todos';
+                    document.getElementById('mcBudget').textContent = t.budget ? `💰 ${t.budget}` : '💰 A convenir';
+
+                    const nicheEl = document.getElementById('mcNiche');
+                    if (t.niche) {
+                        nicheEl.style.display = 'block';
+                        nicheEl.textContent = `🎯 ${t.niche}`;
+                    } else {
+                        nicheEl.style.display = 'none';
+                    }
+                    card.style.display = 'block';
+                }
+
                 async function loadScripts(campId) {
                     currentCampaignId = campId;
+                    updateMissionCard(campId);
+
                     const list = document.getElementById('scriptList');
                     list.innerHTML = '<div style="text-align:center; padding:1rem;">Cargando...</div>';
 
@@ -1262,6 +1334,39 @@
                 });
 
                 document.getElementById('logoutBtn').addEventListener('click', () => { localStorage.clear(); location.href = 'index.html'; });
+
+                // Listener Crear Campaña
+                document.getElementById('createCampaignForm').addEventListener('submit', async (e) => {
+                    e.preventDefault();
+
+                    const name = document.getElementById('newCampName').value;
+                    const desc = document.getElementById('newCampDesc').value;
+
+                    const target_config = {
+                        platform: document.getElementById('targetPlatform').value,
+                        geo: document.getElementById('targetGeo').value,
+                        followers: document.getElementById('targetFollowers').value,
+                        budget: document.getElementById('targetBudget').value,
+                        niche: document.getElementById('targetNiche').value
+                    };
+
+                    try {
+                        const res = await fetch(`${API_URL}/campaigns`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                            body: JSON.stringify({ name, description: desc, target_config })
+                        });
+
+                        if (res.ok) {
+                            closeModal('createCampaignModal');
+                            loadCampaigns();
+                            // Limpiar form
+                            e.target.reset();
+                        } else {
+                            alert('Error creando campaña');
+                        }
+                    } catch (err) { console.error(err); alert('Error de conexión'); }
+                });
 
                 // ======= DASHBOARD ADMIN (SUPER VISIÓN) =======
                 async function loadAgentsDashboard() {

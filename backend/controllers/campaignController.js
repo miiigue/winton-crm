@@ -12,11 +12,11 @@ exports.getAllCampaigns = async (req, res) => {
 };
 
 exports.createCampaign = async (req, res) => {
-    const { name, description } = req.body;
+    const { name, description, target_config } = req.body;
     try {
         const { rows } = await pool.query(
-            'INSERT INTO campaigns (name, description) VALUES ($1, $2) RETURNING *',
-            [name, description]
+            'INSERT INTO campaigns (name, description, target_config) VALUES ($1, $2, $3) RETURNING *',
+            [name, description, target_config || {}]
         );
         res.status(201).json(rows[0]);
     } catch (err) {
