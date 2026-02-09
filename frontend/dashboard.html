@@ -762,8 +762,9 @@
                 </div>
             </div>
 
+            <script src="config.js"></script>
             <script>
-                const API_URL = 'http://localhost:4000/api';
+                const API_URL = CONFIG.API_URL;
                 let user = JSON.parse(localStorage.getItem('crm_user') || '{}');
                 const token = localStorage.getItem('crm_token');
                 let currentCampaignId = null;
