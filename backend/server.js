@@ -11,6 +11,10 @@ const authMiddleware = require('./middleware/authMiddleware');
 const settingsController = require('./controllers/settingsController');
 const authRoutes = require('./routes/authRoutes');
 const influencerRoutes = require('./routes/influencerRoutes');
+const initDB = require('./scripts/init_db_prod');
+
+// Inicializar DB en cada arranque (seguro con IF NOT EXISTS)
+initDB();
 
 // Middleware Global
 app.use(cors());
