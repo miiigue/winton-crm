@@ -75,11 +75,12 @@ async function initDB() {
         try {
             await pool.query(`
                 ALTER TABLE campaigns 
-                ADD COLUMN IF NOT EXISTS target_config JSONB DEFAULT '{}';
+                ADD COLUMN IF NOT EXISTS target_config JSONB DEFAULT '{}',
+                ADD COLUMN IF NOT EXISTS require_all_fields BOOLEAN DEFAULT FALSE;
             `);
-            console.log('✅ Columna target_config verificada en campaigns.');
+            console.log('✅ Columnas target_config y require_all_fields verificadas en campaigns.');
         } catch (e) {
-            console.log('ℹ️ Nota: Error menor verificando columna target_config (probablemente ya existe o permisos):', e.message);
+            console.log('ℹ️ Nota: Error menor verificando columnas en campaigns:', e.message);
         }
 
         // 5. Tabla de Scripts (Corrección: Nombre correcto campaign_scripts)

@@ -3,15 +3,27 @@ const pool = require('../config/db').pool;
 // Listar influencers
 exports.getLeads = async (req, res) => {
     const { status, assigned_to } = req.query;
+    const userRole = req.user.role;
+    const userId = req.user.id;
+
     let query = 'SELECT * FROM influencers WHERE 1=1';
     let params = [];
 
-    if (assigned_to) {
+    // SI ES AGENTE: Forzar que solo vea sus propios leads
+    if (userRole === 'agent') {
         query += ' AND assigned_to = $1';
-        params.push(assigned_to);
+        params.push(userId);
+    } else {
+        // SI ES ADMIN: Puede filtrar por cualquier agente si lo desea
+        if (assigned_to) {
+            query += ' AND assigned_to = $1';
+            params.push(assigned_to);
+        }
     }
+
     if (status) {
-        query += ' AND status = $2';
+        const statusParamIndex = params.length + 1;
+        query += ` AND status = $${statusParamIndex}`;
         params.push(status);
     }
 

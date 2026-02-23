@@ -586,6 +586,15 @@
                         </div>
                         <label>Nicho / Vertical</label>
                         <input type="text" id="targetNiche" placeholder="Ej: Cripto, Finanzas, Lifestyle">
+
+                        <div
+                            style="margin: 1rem 0; display: flex; align-items: center; gap: 0.5rem; background: #1f2937; padding: 0.75rem; border-radius: 0.5rem; border: 1px dashed var(--primary);">
+                            <input type="checkbox" id="requireAllFields" style="width: auto; margin: 0;">
+                            <label for="requireAllFields"
+                                style="margin: 0; font-weight: bold; color: var(--primary); cursor: pointer;">
+                                ⚠️ Obligar al agente a llenar TODOS los campos del Lead
+                            </label>
+                        </div>
                         <div style="text-align:right;">
                             <button type="button" class="btn btn-outline"
                                 onclick="closeModal('createCampaignModal')">Cancelar</button>
@@ -655,6 +664,10 @@
                                 <label>Link Perfil</label> <input type="url" id="newLeadUrl" required
                                     placeholder="https://...">
                             </div>
+                        </div>
+                        <div id="mandatoryAlert"
+                            style="display:none; margin-top:1rem; padding:0.5rem; background:rgba(239, 68, 68, 0.1); border:1px solid #ef4444; border-radius:4px; color:#f87171; font-size:0.8rem; text-align:center;">
+                            ⚠️ El administrador requiere que completes todos los campos para esta campaña.
                         </div>
                         <div style="text-align:right; margin-top:1rem;">
                             <button type="button" class="btn btn-outline"
@@ -852,6 +865,23 @@
                     const campaign = campaignsCache.find(c => c.id == campId);
                     const card = document.getElementById('missionCard');
 
+                    // Al seleccionar campaña, configuramos la obligatoriedad de campos en el formulario de prospectos
+                    const form = document.getElementById('createLeadForm');
+                    const mandatoryAlert = document.getElementById('mandatoryAlert');
+
+                    if (campaign && campaign.require_all_fields) {
+                        // Hacer campos obligatorios
+                        form.querySelectorAll('input, select').forEach(el => el.required = true);
+                        if (mandatoryAlert) mandatoryAlert.style.display = 'block';
+                    } else {
+                        // Volver a estado normal (solo campos base requeridos)
+                        form.querySelectorAll('input, select').forEach(el => el.required = false);
+                        document.getElementById('newLeadName').required = true;
+                        document.getElementById('newLeadEmail').required = true;
+                        document.getElementById('newLeadUrl').required = true;
+                        if (mandatoryAlert) mandatoryAlert.style.display = 'none';
+                    }
+
                     if (!campaign || !campaign.target_config || Object.keys(campaign.target_config).length === 0) {
                         card.style.display = 'none';
                         return;
@@ -944,15 +974,35 @@
                 // Crear Campaña
                 document.getElementById('createCampaignForm').addEventListener('submit', async (e) => {
                     e.preventDefault();
+
                     const name = document.getElementById('newCampName').value;
                     const desc = document.getElementById('newCampDesc').value;
-                    await fetch(`${API_URL}/campaigns`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                        body: JSON.stringify({ name, description: desc })
-                    });
-                    closeModal('createCampaignModal');
-                    loadCampaigns();
+                    const require_all_fields = document.getElementById('requireAllFields').checked;
+
+                    // Capturar parámetros de audiencia
+                    const target_config = {
+                        platform: document.getElementById('targetPlatform').value,
+                        geo: document.getElementById('targetGeo').value,
+                        followers: document.getElementById('targetFollowers').value,
+                        budget: document.getElementById('targetBudget').value,
+                        niche: document.getElementById('targetNiche').value
+                    };
+
+                    try {
+                        const res = await fetch(`${API_URL}/campaigns`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                            body: JSON.stringify({ name, description: desc, target_config, require_all_fields })
+                        });
+
+                        if (res.ok) {
+                            closeModal('createCampaignModal');
+                            loadCampaigns();
+                            e.target.reset();
+                        } else {
+                            alert('Error creando campaña');
+                        }
+                    } catch (err) { console.error(err); alert('Error de conexión'); }
                 });
 
                 // Crear/Editar Script
