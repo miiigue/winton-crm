@@ -6,24 +6,30 @@ exports.getLeads = async (req, res) => {
     const userRole = req.user.role;
     const userId = req.user.id;
 
-    let query = 'SELECT * FROM influencers WHERE 1=1';
+    let query = `
+        SELECT i.*, 
+            (SELECT notes FROM interactions WHERE influencer_id = i.id ORDER BY created_at DESC LIMIT 1) as last_note,
+            (SELECT created_at FROM interactions WHERE influencer_id = i.id ORDER BY created_at DESC LIMIT 1) as last_interaction_date
+        FROM influencers i 
+        WHERE 1=1
+    `;
     let params = [];
 
     // SI ES AGENTE: Forzar que solo vea sus propios leads
     if (userRole === 'agent') {
-        query += ' AND assigned_to = $1';
+        query += ' AND i.assigned_to = $1';
         params.push(userId);
     } else {
         // SI ES ADMIN: Puede filtrar por cualquier agente si lo desea
         if (assigned_to) {
-            query += ' AND assigned_to = $1';
+            query += ' AND i.assigned_to = $1';
             params.push(assigned_to);
         }
     }
 
     if (status) {
         const statusParamIndex = params.length + 1;
-        query += ` AND status = $${statusParamIndex}`;
+        query += ` AND i.status = $${statusParamIndex}`;
         params.push(status);
     }
 

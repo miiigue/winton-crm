@@ -331,6 +331,69 @@
         }
 
         /* MODALS */
+        /* MINI STATS CARDS */
+        .mini-stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .mini-stat-card {
+            background: #111827;
+            border: 1px solid #1f2937;
+            padding: 1rem;
+            border-radius: 0.75rem;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .mini-stat-card .label {
+            font-size: 0.75rem;
+            color: #9ca3af;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .mini-stat-card .value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--primary);
+        }
+
+        /* ADVANCED FILTERS */
+        .filters-panel {
+            background: #111827;
+            padding: 1rem;
+            border-radius: 0.75rem;
+            border: 1px solid #1f2937;
+            margin-bottom: 1rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            align-items: flex-end;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .filter-group label {
+            font-size: 0.7rem;
+            color: #6b7280;
+            margin: 0;
+        }
+
+        .filter-group input,
+        .filter-group select {
+            margin: 0;
+            padding: 0.5rem;
+            font-size: 0.85rem;
+            min-width: 140px;
+        }
+
         .modal {
             display: none;
             position: fixed;
@@ -529,15 +592,61 @@
 
             <!-- VISTA AGENTE: MIS LEADS -->
             <div id="agentDashboardView" style="display:none;">
-                <div
-                    style="display:flex; justify-content:space-between; margin-bottom:1.5rem; align-items: center; margin-top:2rem;">
-                    <h2 style="font-size: 1.5rem;">Mis Leads</h2>
-                    <select id="statusFilter" style="width:auto; margin:0; min-width: 150px;">
-                        <option value="">Todos</option>
-                        <option value="pending">Pendientes</option>
-                        <option value="contacted">Contactados</option>
-                    </select>
+                <!-- AGENT MINI KPI SECTION -->
+                <div id="agentMiniStats" class="mini-stats-grid" style="margin-top:2rem;">
+                    <div class="mini-stat-card">
+                        <span class="label">Total Prospectos</span>
+                        <span class="value" id="statLeadsTotal">0</span>
+                    </div>
+                    <div class="mini-stat-card">
+                        <span class="label">Contactados</span>
+                        <span class="value" id="statLeadsContacted" style="color:var(--warning);">0</span>
+                    </div>
+                    <div class="mini-stat-card">
+                        <span class="label">Conversión</span>
+                        <span class="value" id="statLeadsConv" style="color:var(--success);">0%</span>
+                    </div>
+                    <div class="mini-stat-card">
+                        <span class="label">Nuevos Hoy</span>
+                        <span class="value" id="statLeadsToday" style="color:var(--primary);">0</span>
+                    </div>
                 </div>
+
+                <!-- Filtros Avanzados -->
+                <div class="filters-panel">
+                    <div class="filter-group" style="flex:1; min-width:200px;">
+                        <label>Buscar Handle/Nombre</label>
+                        <input type="text" id="searchFilter" placeholder="Ej: @usuario..." oninput="filterLeadsLocal()">
+                    </div>
+                    <div class="filter-group">
+                        <label>Estado</label>
+                        <select id="statusFilter" onchange="filterLeadsLocal()">
+                            <option value="all">Todos los Estados</option>
+                            <option value="pending">Pendientes</option>
+                            <option value="contacted">Contactados</option>
+                            <option value="negotiating">Negociando</option>
+                            <option value="closed">Cerrados</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>Nicho</label>
+                        <select id="nicheFilter" onchange="filterLeadsLocal()">
+                            <option value="all">Todos los Nichos</option>
+                            <option value="Crypto">Crypto</option>
+                            <option value="Finanzas">Finanzas</option>
+                            <option value="Humor">Humor</option>
+                            <option value="Lifestyle">Lifestyle</option>
+                            <option value="Tech">Tech</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>Seguidores (Mín)</label>
+                        <input type="number" id="followersMinFilter" placeholder="0" oninput="filterLeadsLocal()">
+                    </div>
+                    <button class="btn btn-sm btn-outline" style="height:38px; padding:0 1rem;"
+                        onclick="resetAllFilters()">Limpiar</button>
+                </div>
+
                 <div id="leadsTableContainer" class="table-container">
                     <table class="data-table">
                         <thead>
@@ -547,12 +656,11 @@
                                         onclick="toggleAllLeads(this)">
                                 </th>
                                 <th>Prospecto</th>
-                                <th>Plataforma</th>
-                                <th style="text-align:center;">Seguidores</th>
-                                <th style="text-align:center;">Avg. Views</th>
-                                <th>País / Nicho</th>
-                                <th>Email</th>
+                                <th>Métricas</th>
+                                <th>Nicho / País</th>
+                                <th>Última Nota</th>
                                 <th style="text-align:center;">Estado</th>
+                                <th style="text-align:center;">Engagement</th>
                                 <th style="text-align:right;">Acción</th>
                             </tr>
                         </thead>
@@ -568,6 +676,9 @@
                         <span style="font-size:0.9rem; color:#9ca3af;">Seleccionados</span>
                     </div>
                     <div style="display:flex; gap:0.75rem;">
+                        <button class="btn btn-sm btn-outline" onclick="exportToCSV()" title="Exportar a Excel/CSV">
+                            <i class="ph ph-download"></i> Exportar
+                        </button>
                         <button class="btn btn-sm btn-outline" onclick="bulkEditStatus()" title="Cambiar Estado">
                             <i class="ph ph-arrow-clockwise"></i> Estado
                         </button>
@@ -939,13 +1050,38 @@
                     </div>
 
                     <div
-                        style="background:#1e293b; padding:1rem; border-radius:0.5rem; margin-bottom:1rem; font-size:0.85rem;">
-                        <p style="margin:0; color:#9ca3af;">
-                            <strong>Instrucciones:</strong> Copia tus celdas de Excel y pégalas aquí.
-                            El orden de columnas debe ser: <br>
-                            <code
-                                style="color:var(--primary);">Nombre/Handle | Plataforma | Link | Seguidores | Views | País | Nicho | Email</code>
-                        </p>
+                        style="background:#111827; padding:1.25rem; border-radius:1rem; border:1px solid #1f2937; margin-bottom:1.5rem;">
+                        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:1.5rem;">
+                            <div style="flex:1;">
+                                <h4 style="margin:0 0 0.5rem 0; color:white; font-size:1rem;">🤖 Estrategia de
+                                    Prospección IA</h4>
+                                <p style="margin:0; color:#9ca3af; font-size:0.85rem; line-height:1.5;">
+                                    Usa una IA para buscar leads y pídele que use este formato de columnas exacto. Copia
+                                    el prompt de abajo para empezar.
+                                </p>
+                            </div>
+                            <button class="btn btn-sm btn-outline" onclick="copyAIPrompt()"
+                                style="white-space:nowrap; background:rgba(59, 130, 246, 0.1); border-color:rgba(59, 130, 246, 0.3); color:#60a5fa;">
+                                <i class="ph ph-magic-wand"></i> Copiar Prompt para IA
+                            </button>
+                        </div>
+
+                        <div
+                            style="margin-top:1.25rem; padding:0.75rem; background:#0f172a; border-radius:0.5rem; border:1px solid #334155;">
+                            <div
+                                style="display:grid; grid-template-columns: repeat(8, 1fr); gap:4px; text-align:center; font-size:0.65rem; color:#94a3b8; font-weight:bold; text-transform:uppercase;">
+                                <div
+                                    style="padding:4px; background:#1e293b; border-radius:4px 0 0 4px; color:var(--primary);">
+                                    Nombre</div>
+                                <div style="padding:4px; background:#1e293b;">Plataforma</div>
+                                <div style="padding:4px; background:#1e293b; color:var(--primary);">Link Perfil</div>
+                                <div style="padding:4px; background:#1e293b;">Seguidores</div>
+                                <div style="padding:4px; background:#1e293b;">Views</div>
+                                <div style="padding:4px; background:#1e293b;">País</div>
+                                <div style="padding:4px; background:#1e293b;">Nicho</div>
+                                <div style="padding:4px; background:#1e293b; border-radius:0 4px 4px 0;">Email</div>
+                            </div>
+                        </div>
                     </div>
 
                     <div id="pasteStep">
@@ -1233,62 +1369,204 @@
                 window.openModal = (id) => document.getElementById(id).style.display = 'flex';
                 window.closeModal = (id) => document.getElementById(id).style.display = 'none';
 
-                // ================= LEADS (VISTA TABLA EXCEL) =================
+                window.copyAIPrompt = () => {
+                    const promptText = `Actúa como un experto en Growth Hacking y Prospección. Necesito que busques influencers de [INSERTAR NICHO AQUÍ] en [INSERTAR PLATAFORMA/PAÍS AQUÍ]. 
+Genérame una tabla lista para copiar y pegar en Excel con estas 8 columnas exactas, manteniendo los encabezados pero asegurándote de que la información sea real y verificada:
+
+1. Handle (Nombre de usuario con @)
+2. Plataforma (Instagram, TikTok, etc.)
+3. URL Perfil (Link directo al perfil)
+4. Seguidores (Número aproximado)
+5. Avg Views (Vistas promedio últimos videos)
+6. País
+7. Nicho
+8. Email (Si está disponible en su bio o similar)
+
+IMPORTANTE: No me des introducciones, solo entrégame la tabla markdown decorada con los datos reales.`;
+
+                    navigator.clipboard.writeText(promptText).then(() => {
+                        alert('¡Prompt copiado! Pégalo en ChatGPT o Claude para obtener tus leads.');
+                    });
+                };
+
+                // ================= LEADS (VISTA TABLA PROFESIONAL) =================
+                let allLeadsCache = []; // Para filtrado instantáneo sin peticiones al servidor
+
+                // Formato corto de números (K, M) - Utility Global
+                const formatLongNum = (n) => {
+                    if (!n) return '0';
+                    const num = parseInt(n);
+                    if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+                    if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+                    return num;
+                };
+
                 async function loadLeads() {
                     const tbody = document.getElementById('leadsTableBody');
+                    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:2rem;">Cargando prospectos...</td></tr>';
+
                     try {
                         const res = await fetch(`${API_URL}/influencers`, { headers: { 'Authorization': `Bearer ${token}` } });
-                        const leads = await res.json();
-                        tbody.innerHTML = '';
+                        allLeadsCache = await res.json();
 
-                        if (leads.length === 0) {
-                            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:3rem; color:#94a3b8;">No tienes leads asignados. ¡Importa tu Excel o crea uno nuevo!</td></tr>';
-                            return;
-                        }
+                        renderLeadsTable(allLeadsCache);
+                        updateAgentKPIs(allLeadsCache);
+                    } catch (e) {
+                        console.error(e);
+                        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:2rem; color:#ef4444;">Error cargando datos</td></tr>';
+                    }
+                }
 
-                        leads.forEach(l => {
-                            const tr = document.createElement('tr');
+                function renderLeadsTable(leads) {
+                    const tbody = document.getElementById('leadsTableBody');
+                    tbody.innerHTML = '';
 
-                            // Formato corto de números (K, M)
-                            const formatLongNum = (n) => {
-                                if (!n) return '0';
-                                if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
-                                if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
-                                return n;
-                            };
+                    if (leads.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:3rem; color:#6b7280;">No se encontraron prospectos con estos filtros</td></tr>';
+                        return;
+                    }
 
-                            tr.innerHTML = `
-                                <td style="text-align:center;">
-                                    <input type="checkbox" class="row-selector lead-checkbox" value="${l.id}" onchange="updateSelectionState()">
-                                </td>
-                                <td>
-                                    <div style="font-weight:bold;">${l.name}</div>
-                                    <a href="${l.profile_url}" target="_blank" style="font-size:0.75rem; color:var(--primary); text-decoration:none;">ver perfil ↗</a>
-                                </td>
-                                <td><span style="font-size:0.85rem; padding:0.2rem 0.5rem; background:#1e293b; border-radius:4px;">${l.platform}</span></td>
-                                <td style="text-align:center; font-family:monospace;">${formatLongNum(l.followers_count)}</td>
-                                <td style="text-align:center; font-family:monospace;">${formatLongNum(l.avg_views)}</td>
-                                <td>
-                                    <div style="font-size:0.85rem;">${l.country || '-'}</div>
-                                    <div style="font-size:0.75rem; color:#9ca3af;">${l.niche || '-'}</div>
-                                </td>
-                                <td style="font-size:0.85rem; color:#d1d5db;">${l.email || '<span style="color:#4b5563;">n/a</span>'}</td>
-                                <td style="text-align:center;">
-                                    <span class="status-badge status-${l.status}" style="font-size:0.7rem;">${l.status.toUpperCase()}</span>
-                                </td>
-                                <td style="text-align:right; display:flex; gap:0.25rem; justify-content:flex-end;">
+                    leads.forEach(l => {
+                        const tr = document.createElement('tr');
+
+                        // Formatear última nota
+                        const noteSnippet = l.last_note
+                            ? (l.last_note.length > 50 ? l.last_note.substring(0, 50) + '...' : l.last_note)
+                            : '<span style="color:#4b5563; font-style:italic;">Sin interacciones</span>';
+
+                        // Botones de Engagement (Ig, WhatsApp/Mail)
+                        const igLink = l.profile_url || `https://instagram.com/${l.name.replace('@', '')}`;
+                        const waLink = l.email && l.email.includes('@') ? `mailto:${l.email}` : '#';
+
+                        tr.innerHTML = `
+                            <td style="text-align:center;">
+                                <input type="checkbox" class="row-selector lead-checkbox" value="${l.id}" onchange="updateSelectionState()">
+                            </td>
+                            <td>
+                                <div style="font-weight:bold; color:white;">${l.name}</div>
+                                <div style="font-size:0.7rem; color:#6b7280;">ID: ${l.id}</div>
+                            </td>
+                            <td>
+                                <div style="font-size:0.85rem;"><span style="color:#94a3b8;">Seg:</span> ${formatLongNum(l.followers_count)}</div>
+                                <div style="font-size:0.85rem;"><span style="color:#94a3b8;">Views:</span> ${formatLongNum(l.avg_views)}</div>
+                                <div style="font-size:0.75rem; color:var(--primary);">${l.platform}</div>
+                            </td>
+                            <td>
+                                <div style="font-size:0.85rem; font-weight:500;">${l.niche || '-'}</div>
+                                <div style="font-size:0.75rem; color:#9ca3af;">${l.country || '-'}</div>
+                            </td>
+                            <td style="max-width:250px;">
+                                <div style="font-size:0.8rem; line-height:1.4; color:#d1d5db;">${noteSnippet}</div>
+                                ${l.last_interaction_date ? `<div style="font-size:0.65rem; color:#4b5563; margin-top:2px;">${new Date(l.last_interaction_date).toLocaleDateString()}</div>` : ''}
+                            </td>
+                            <td style="text-align:center;">
+                                <span class="status-badge status-${l.status}" style="font-size:0.7rem; padding: 2px 8px;">${l.status.toUpperCase()}</span>
+                            </td>
+                            <td style="text-align:center;">
+                                <div style="display:flex; gap:0.5rem; justify-content:center;">
+                                    <a href="${igLink}" target="_blank" class="icon-btn" style="background:rgba(131, 58, 180, 0.2); color:#e1306c; width:32px; height:32px; border-radius:8px;" title="Ver Instagram"><i class="ph ph-instagram-logo"></i></a>
+                                    <a href="${waLink}" target="_blank" class="icon-btn" style="background:rgba(16, 185, 129, 0.2); color:#10b981; width:32px; height:32px; border-radius:8px;" title="Enviar Email"><i class="ph ph-envelope-simple"></i></a>
+                                </div>
+                            </td>
+                            <td style="text-align:right;">
+                                <div style="display:flex; gap:0.25rem; justify-content:flex-end;">
                                     <button class="btn btn-sm btn-outline" onclick="editLead(${JSON.stringify(l).replace(/"/g, '&quot;')})" style="padding: 0.3rem 0.6rem;">
                                         <i class="ph ph-pencil"></i>
                                     </button>
                                     <button class="btn btn-sm" onclick="openActionModal(${l.id}, '${l.name}')" style="padding: 0.3rem 0.6rem; font-size:0.75rem;">
-                                        Log
+                                        LOG
                                     </button>
-                                </td>
-                            `;
-                            tbody.appendChild(tr);
-                        });
-                        updateSelectionState(); // Reset bar
-                    } catch (e) { console.error(e); }
+                                </div>
+                            </td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                    updateSelectionState();
+                }
+
+                // --- LÓGICA DE FILTRADO LOCAL (Instantáneo) ---
+                function filterLeadsLocal() {
+                    const search = document.getElementById('searchFilter').value.toLowerCase();
+                    const status = document.getElementById('statusFilter').value;
+                    const niche = document.getElementById('nicheFilter').value;
+                    const followersMin = parseInt(document.getElementById('followersMinFilter').value) || 0;
+
+                    const filtered = allLeadsCache.filter(l => {
+                        const matchSearch = l.name.toLowerCase().includes(search) || (l.email && l.email.toLowerCase().includes(search));
+                        const matchStatus = status === 'all' ? true : l.status === status;
+                        const matchNiche = niche === 'all' ? true : l.niche === niche;
+                        const matchFollowers = (l.followers_count || 0) >= followersMin;
+
+                        return matchSearch && matchStatus && matchNiche && matchFollowers;
+                    });
+
+                    renderLeadsTable(filtered);
+                }
+
+                function resetAllFilters() {
+                    document.getElementById('searchFilter').value = '';
+                    document.getElementById('statusFilter').value = 'all';
+                    document.getElementById('nicheFilter').value = 'all';
+                    document.getElementById('followersMinFilter').value = '';
+                    renderLeadsTable(allLeadsCache);
+                }
+
+                // --- KPIs DE AGENTE ---
+                function updateAgentKPIs(leads) {
+                    if (user.role !== 'agent') return;
+                    document.getElementById('agentMiniStats').style.display = 'grid';
+
+                    const total = leads.length;
+                    const contacted = leads.filter(l => l.status !== 'pending').length;
+                    const closed = leads.filter(l => l.status === 'closed').length;
+                    const today = leads.filter(l => {
+                        const createdAt = new Date(l.created_at);
+                        const now = new Date();
+                        return createdAt.toDateString() === now.toDateString();
+                    }).length;
+
+                    const conv = total > 0 ? ((closed / total) * 100).toFixed(1) : '0.0';
+
+                    document.getElementById('statLeadsTotal').textContent = total;
+                    document.getElementById('statLeadsContacted').textContent = contacted;
+                    document.getElementById('statLeadsConv').textContent = conv + '%';
+                    document.getElementById('statLeadsToday').textContent = today;
+                }
+
+                // --- EXPORTAR A CSV ---
+                function exportToCSV() {
+                    const checks = document.querySelectorAll('.lead-checkbox:checked');
+                    const ids = Array.from(checks).map(c => parseInt(c.value));
+                    const dataToExport = ids.length > 0 ? allLeadsCache.filter(l => ids.includes(l.id)) : allLeadsCache;
+
+                    if (dataToExport.length === 0) return alert('No hay datos para exportar');
+
+                    const headers = ['ID', 'Nombre', 'Plataforma', 'URL', 'Seguidores', 'Avg Views', 'Pais', 'Nicho', 'Email', 'Estado', 'Ultima Nota'];
+                    const rows = dataToExport.map(l => [
+                        l.id,
+                        l.name,
+                        l.platform,
+                        l.profile_url,
+                        l.followers_count,
+                        l.avg_views,
+                        l.country,
+                        l.niche,
+                        l.email,
+                        l.status,
+                        (l.last_note || '').replace(/,/g, ';').replace(/\n/g, ' ')
+                    ]);
+
+                    let csvContent = "data:text/csv;charset=utf-8,"
+                        + headers.join(",") + "\n"
+                        + rows.map(e => e.join(",")).join("\n");
+
+                    const encodedUri = encodeURI(csvContent);
+                    const link = document.createElement("a");
+                    link.setAttribute("href", encodedUri);
+                    link.setAttribute("download", `winton_leads_${new Date().toISOString().split('T')[0]}.csv`);
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
                 }
 
                 // --- LÓGICA DE SELECCIÓN ---
@@ -1305,22 +1583,23 @@
                     const master = document.getElementById('selectAllLeads');
                     const allChecks = document.querySelectorAll('.lead-checkbox');
 
-                    counter.textContent = checks.length;
-                    if (checks.length > 0) {
-                        bar.classList.add('active');
-                    } else {
-                        bar.classList.remove('active');
+                    if (counter) counter.textContent = checks.length;
+                    if (bar) {
+                        if (checks.length > 0) bar.classList.add('active');
+                        else bar.classList.remove('active');
                     }
 
-                    // Sincronizar master
-                    if (allChecks.length > 0) {
+                    if (master && allChecks.length > 0) {
                         master.checked = checks.length === allChecks.length;
                     }
                 }
 
                 function clearSelection() {
-                    document.getElementById('selectAllLeads').checked = false;
-                    toggleAllLeads(document.getElementById('selectAllLeads'));
+                    const master = document.getElementById('selectAllLeads');
+                    if (master) {
+                        master.checked = false;
+                        toggleAllLeads(master);
+                    }
                 }
 
                 // --- ACCIONES INDIVIDUALES / MASIVAS ---
