@@ -41,10 +41,18 @@ async function initDB() {
                 ADD COLUMN IF NOT EXISTS niche VARCHAR(100),
                 ADD COLUMN IF NOT EXISTS avg_views INTEGER DEFAULT 0,
                 ADD COLUMN IF NOT EXISTS email VARCHAR(150);
+                
+                -- Asegurar que el nombre también sea único para evitar duplicados por handle
+                DO $$ 
+                BEGIN 
+                    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'influencers_name_key') THEN
+                        ALTER TABLE influencers ADD CONSTRAINT influencers_name_key UNIQUE (name);
+                    END IF;
+                END $$;
             `);
-            console.log('✅ Columnas extra verificadas en influencers.');
+            console.log('✅ Columnas y restricciones de unicidad verificadas en influencers.');
         } catch (e) {
-            console.log('ℹ️ Nota: Error menor verificando columnas influencers:', e.message);
+            console.log('ℹ️ Nota: Error verificando columnas/restricciones en influencers:', e.message);
         }
 
         // 3. Tabla de Interacciones

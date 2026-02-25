@@ -37,13 +37,14 @@ exports.getLeads = async (req, res) => {
 
 // Crear nuevo influencer (Lead) - Ahora permitido para Agentes (Prospectors)
 // Crear nuevo influencer (Lead) - Ahora permitido para Agentes (Prospectors)
+// Crear nuevo influencer (Lead)
 exports.createLead = async (req, res) => {
-    // Nuevos campos obligatorios
     const { name, platform, profile_url, followers_count, country, niche, avg_views, email } = req.body;
-    const agentId = req.user.id; // El creador se asigna el lead automáticamente
+    const agentId = req.user.id;
 
-    if (!name || !email || !platform) {
-        return res.status(400).json({ error: 'Nombre, Email y Plataforma son obligatorios' });
+    // Solo validamos Nombre y Plataforma como base absoluta
+    if (!name || !platform) {
+        return res.status(400).json({ error: 'El Nombre/Handle y la Plataforma son obligatorios' });
     }
 
     try {
@@ -53,7 +54,19 @@ exports.createLead = async (req, res) => {
         );
         res.status(201).json(rows[0]);
     } catch (err) {
-        res.status(400).json({ error: err.message });
+        // Manejo amigable de errores de duplicados (Postgres code 23505)
+        if (err.code === '23505') {
+            if (err.constraint === 'influencers_profile_url_key') {
+                return res.status(400).json({ error: '⚠️ Este enlace de perfil ya ha sido registrado por otro agente.' });
+            }
+            if (err.constraint === 'influencers_name_key') {
+                return res.status(400).json({ error: '⚠️ Este Nombre/Handle ya existe en el sistema.' });
+            }
+            return res.status(400).json({ error: '⚠️ Ya existe un registro con estos datos.' });
+        }
+
+        console.error(err);
+        res.status(500).json({ error: 'Error interno al registrar el prospecto' });
     }
 };
 
