@@ -81,6 +81,83 @@ exports.assignLead = async (req, res) => {
     }
 };
 
+// --- OPERACIONES MASIVAS (BATCH) ---
+
+// Validar lote antes de importar
+exports.validateBatch = async (req, res) => {
+    const { items } = req.body; // Array de {name, profile_url}
+    if (!items || !Array.isArray(items)) return res.status(400).json({ error: 'Formato inválido' });
+
+    try {
+        const results = [];
+        for (const item of items) {
+            // Buscamos si existe por Nombre o por Link
+            const { rows } = await pool.query(
+                `SELECT i.name, i.profile_url, u.username as owner 
+                 FROM influencers i 
+                 LEFT JOIN crm_users u ON i.assigned_to = u.id 
+                 WHERE i.name = $1 OR (i.profile_url != '' AND i.profile_url = $2)`,
+                [item.name, item.profile_url]
+            );
+
+            if (rows.length > 0) {
+                results.push({
+                    ...item,
+                    status: 'conflict',
+                    owner: rows[0].owner,
+                    message: `Ya registrado por ${rows[0].owner}`
+                });
+            } else {
+                results.push({ ...item, status: 'ok' });
+            }
+        }
+        res.json(results);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Error validando lote' });
+    }
+};
+
+// Creación Masiva
+exports.bulkCreate = async (req, res) => {
+    const { items } = req.body;
+    const agentId = req.user.id;
+
+    if (!items || !Array.isArray(items)) return res.status(400).json({ error: 'Formato inválido' });
+
+    try {
+        let count = 0;
+        for (const item of items) {
+            // Insertar ignorando conflictos (por seguridad extra si el frontend falló al filtrar)
+            // Usamos INSERT ... ON CONFLICT DO NOTHING para evitar que un error pare todo el lote
+            const query = `
+                INSERT INTO influencers 
+                (name, platform, profile_url, followers_count, assigned_to, status, country, niche, avg_views, email) 
+                VALUES ($1, $2, $3, $4, $5, 'pending', $6, $7, $8, $9)
+                ON CONFLICT (name) DO NOTHING
+            `;
+            const params = [
+                item.name,
+                item.platform || 'Instagram',
+                item.profile_url || '',
+                item.followers_count || 0,
+                agentId,
+                item.country || '',
+                item.niche || '',
+                item.avg_views || 0,
+                item.email || ''
+            ];
+
+            const result = await pool.query(query, params);
+            if (result.rowCount > 0) count++;
+        }
+        res.json({ message: `Se han importado ${count} prospectos exitosamente.` });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Error en la importación masiva' });
+    }
+};
+
 // Registrar interacción y cambiar estado (CORE FUNCTIONALITY)
 exports.logInteraction = async (req, res) => {
     const { leadIds, type, notes, screenshot_url, new_status, budget_offer } = req.body;
@@ -121,3 +198,4 @@ exports.logInteraction = async (req, res) => {
         res.status(500).json({ error: 'Error registrando interacción' });
     }
 };
+

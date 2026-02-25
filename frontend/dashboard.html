@@ -349,6 +349,7 @@
                     <p id="userWelcome" style="color: #94a3b8; margin-top: 0.5rem;">Agente</p>
                 </div>
                 <div style="display:flex; gap:1rem; align-items: center;">
+                    <button class="btn btn-outline" onclick="openModal('bulkImportModal')">📋 Importar Excel</button>
                     <button class="btn" onclick="openModal('createLeadModal')">+ Nuevo Lead</button>
                     <!-- Admin Only Buttons -->
                     <div id="adminButtons" style="display:none; gap:0.5rem;">
@@ -802,16 +803,53 @@
                 </div>
             </div>
 
-            <!-- Modal Cambiar Contraseña -->
-            <div id="changePasswordModal" class="modal" style="display:none; z-index: 2500;">
-                <div class="modal-content" style="max-width: 400px;">
-                    <h3>🔑 Nueva Contraseña</h3>
-                    <p id="cpAgentName" style="color:#9ca3af; margin-bottom:1rem;"></p>
-                    <input type="hidden" id="cpAgentId">
-                    <input type="password" id="cpNewPass" placeholder="Nueva contraseña" style="margin-bottom:1rem;">
-                    <div style="display:flex; gap:0.5rem; justify-content:flex-end;">
-                        <button class="btn btn-outline" onclick="closeModal('changePasswordModal')">Cancelar</button>
-                        <button class="btn" onclick="submitNewPassword()">Guardar</button>
+            <!-- Modal Bulk Import (Expert Mode) -->
+            <div id="bulkImportModal" class="modal">
+                <div class="modal-content"
+                    style="max-width: 1000px; height: 85vh; display:flex; flex-direction:column;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                        <h3>📋 Importación Inteligente (Excel/Google Sheets)</h3>
+                        <button class="btn btn-sm btn-outline" onclick="closeModal('bulkImportModal')">Cerrar</button>
+                    </div>
+
+                    <div
+                        style="background:#1e293b; padding:1rem; border-radius:0.5rem; margin-bottom:1rem; font-size:0.85rem;">
+                        <p style="margin:0; color:#9ca3af;">
+                            <strong>Instrucciones:</strong> Copia tus celdas de Excel y pégalas aquí.
+                            El orden de columnas debe ser: <br>
+                            <code
+                                style="color:var(--primary);">Nombre/Handle | Plataforma | Link | Seguidores | Views | País | Nicho | Email</code>
+                        </p>
+                    </div>
+
+                    <div id="pasteStep">
+                        <textarea id="bulkPasteArea" placeholder="Pega aquí tus datos de Excel..."
+                            style="width:100%; height:150px; background:#0f172a; color:#f8fafc; font-family:monospace; padding:1rem; border:2px dashed #334155; border-radius:0.5rem; resize:none;"></textarea>
+                        <div style="text-align:right; margin-top:1rem;">
+                            <button class="btn" onclick="validateImportBatch()">🔍 Validar Datos</button>
+                        </div>
+                    </div>
+
+                    <div id="validationStep" style="display:none; flex:1; overflow:hidden; flex-direction:column;">
+                        <h4 style="margin-bottom:0.5rem;">🔍 Pre-visualización y Validación</h4>
+                        <div
+                            style="flex:1; overflow-y:auto; border:1px solid #334155; border-radius:0.5rem; background:#0f172a;">
+                            <table style="width:100%; border-collapse:collapse; font-size:0.85rem;">
+                                <thead style="background:#1e293b; position:sticky; top:0;">
+                                    <tr>
+                                        <th style="padding:0.5rem; text-align:left;">Handle</th>
+                                        <th style="padding:0.5rem; text-align:left;">Estado</th>
+                                        <th style="padding:0.5rem; text-align:left;">Detalle / Conflicto</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="bulkValidationTableBody"></tbody>
+                            </table>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:1rem;">
+                            <button class="btn btn-outline" onclick="resetBulkImport()">← Empezar de nuevo</button>
+                            <button class="btn" id="confirmBulkBtn" onclick="confirmBulkImport()">✅ Importar <span
+                                    id="safeCount">0</span> Prospectos</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1103,6 +1141,102 @@
                         });
                     } catch (e) { console.error(e); }
                 }
+
+                // --- LOGICA DE IMPORTACIÓN MASIVA ---
+                let validatedBulkData = [];
+
+                async function validateImportBatch() {
+                    const text = document.getElementById('bulkPasteArea').value.trim();
+                    if (!text) return alert('Pega algo primero');
+
+                    const lines = text.split('\n');
+                    const items = lines.map(line => {
+                        const cols = line.split('\t'); // Excel usa tabulaciones al copiar
+                        return {
+                            name: (cols[0] || '').trim(),
+                            platform: (cols[1] || 'Instagram').trim(),
+                            profile_url: (cols[2] || '').trim(),
+                            followers_count: parseInt(cols[3]) || 0,
+                            avg_views: parseInt(cols[4]) || 0,
+                            country: (cols[5] || '').trim(),
+                            niche: (cols[6] || '').trim(),
+                            email: (cols[7] || '').trim()
+                        };
+                    }).filter(i => i.name && i.profile_url); // Solo líneas con datos clave
+
+                    if (items.length === 0) return alert('No se encontraron datos válidos. Revisa el formato.');
+
+                    try {
+                        const res = await fetch(`${API_URL}/influencers/validate-batch`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                            body: JSON.stringify({ items })
+                        });
+                        validatedBulkData = await res.json();
+
+                        renderBulkValidationView();
+                    } catch (e) { console.error(e); alert('Error validando lote'); }
+                }
+
+                function renderBulkValidationView() {
+                    document.getElementById('pasteStep').style.display = 'none';
+                    document.getElementById('validationStep').style.display = 'flex';
+
+                    const tbody = document.getElementById('bulkValidationTableBody');
+                    tbody.innerHTML = '';
+
+                    let safeCount = 0;
+                    validatedBulkData.forEach(item => {
+                        const isConflict = item.status === 'conflict';
+                        if (!isConflict) safeCount++;
+
+                        const tr = document.createElement('tr');
+                        tr.style.borderBottom = '1px solid #1e293b';
+                        if (isConflict) tr.style.background = 'rgba(239, 68, 68, 0.1)';
+
+                        tr.innerHTML = `
+                            <td style="padding:0.5rem;">${item.name}</td>
+                            <td style="padding:0.5rem;">
+                                <span style="color:${isConflict ? '#ef4444' : '#10b981'}; font-weight:bold;">
+                                    ${isConflict ? '❌ CONFLICTO' : '✅ LISTO'}
+                                </span>
+                            </td>
+                            <td style="padding:0.5rem; color:${isConflict ? '#f87171' : '#94a3b8'};">
+                                ${isConflict ? `Dueño actual: <strong>${item.owner}</strong>` : 'Nuevo prospecto'}
+                            </td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+
+                    document.getElementById('safeCount').textContent = safeCount;
+                    document.getElementById('confirmBulkBtn').disabled = safeCount === 0;
+                }
+
+                function resetBulkImport() {
+                    document.getElementById('pasteStep').style.display = 'block';
+                    document.getElementById('validationStep').style.display = 'none';
+                    document.getElementById('bulkPasteArea').value = '';
+                    validatedBulkData = [];
+                }
+
+                async function confirmBulkImport() {
+                    const safeItems = validatedBulkData.filter(i => i.status === 'ok');
+                    if (safeItems.length === 0) return;
+
+                    try {
+                        const res = await fetch(`${API_URL}/influencers/bulk-create`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                            body: JSON.stringify({ items: safeItems })
+                        });
+                        const result = await res.json();
+                        alert(result.message);
+                        closeModal('bulkImportModal');
+                        resetBulkImport();
+                        loadLeads();
+                    } catch (e) { console.error(e); alert('Error al importar'); }
+                }
+
 
                 // Reportes (Supervisión)
                 window.openReportModal = async () => {
