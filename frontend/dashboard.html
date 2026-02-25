@@ -207,10 +207,56 @@
             padding: 0.4rem 0.8rem;
         }
 
-        .grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-            gap: 1.5rem;
+        .table-container {
+            background: #111827;
+            border: 1px solid #1f2937;
+            border-radius: 0.75rem;
+            overflow: hidden;
+            margin-top: 1rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.875rem;
+            color: #f3f4f6;
+        }
+
+        .data-table thead {
+            background: #1f2937;
+            border-bottom: 2px solid #374151;
+        }
+
+        .data-table th {
+            padding: 0.875rem 1rem;
+            text-align: left;
+            font-weight: 600;
+            color: #9ca3af;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.025em;
+        }
+
+        .data-table tbody tr {
+            border-bottom: 1px solid #1f2937;
+            transition: background 0.2s;
+        }
+
+        .data-table tbody tr:hover {
+            background: #1e293b;
+        }
+
+        .data-table td {
+            padding: 0.75rem 1rem;
+            vertical-align: middle;
+        }
+
+        .data-table .status-badge {
+            display: inline-block;
+            padding: 0.125rem 0.625rem;
+            border-radius: 9999px;
+            font-weight: 500;
         }
 
         .card {
@@ -453,7 +499,23 @@
                         <option value="contacted">Contactados</option>
                     </select>
                 </div>
-                <div id="leadsGrid" class="grid"></div>
+                <div id="leadsTableContainer" class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Prospecto</th>
+                                <th>Plataforma</th>
+                                <th style="text-align:center;">Seguidores</th>
+                                <th style="text-align:center;">Avg. Views</th>
+                                <th>País / Nicho</th>
+                                <th>Email</th>
+                                <th style="text-align:center;">Estado</th>
+                                <th style="text-align:right;">Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="leadsTableBody"></tbody>
+                    </table>
+                </div>
             </div>
 
             <!-- VISTA FULL PRO AGENTE (SUPERVISIÓN DETALLADA) -->
@@ -1107,37 +1169,53 @@
                 window.openModal = (id) => document.getElementById(id).style.display = 'flex';
                 window.closeModal = (id) => document.getElementById(id).style.display = 'none';
 
-                // ================= LEADS =================
+                // ================= LEADS (VISTA TABLA EXCEL) =================
                 async function loadLeads() {
-                    const grid = document.getElementById('leadsGrid');
+                    const tbody = document.getElementById('leadsTableBody');
                     try {
                         const res = await fetch(`${API_URL}/influencers`, { headers: { 'Authorization': `Bearer ${token}` } });
                         const leads = await res.json();
-                        grid.innerHTML = '';
+                        tbody.innerHTML = '';
 
                         if (leads.length === 0) {
-                            grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:3rem; color:#94a3b8;">No tienes leads asignados. ¡Crea uno nuevo!</div>';
+                            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:3rem; color:#94a3b8;">No tienes leads asignados. ¡Importa tu Excel o crea uno nuevo!</td></tr>';
                             return;
                         }
 
                         leads.forEach(l => {
-                            const div = document.createElement('div');
-                            div.className = 'card';
-                            div.innerHTML = `
-                        <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem;">
-                            <h3 style="margin:0; font-size:1.1rem;">${l.name}</h3>
-                            <span class="status-badge status-${l.status}">${l.status}</span>
-                        </div>
-                        <p style="color:#9ca3af;font-size:0.9rem; margin:0 0 1rem 0;">
-                            <i class="ph ph-users"></i> ${l.followers_count || '?'} • ${l.platform}
-                        </p>
-                        <a href="${l.profile_url}" target="_blank" style="color:var(--primary); display:block; margin:0.5rem 0; font-size:0.9rem; text-decoration:none;">Ver Perfil ↗</a>
-                        
-                        <div style="margin-top:1rem;">
-                            <button class="btn btn-sm" onclick="openActionModal(${l.id}, '${l.name}')" style="width:100%;">Registrar Avance</button>
-                        </div>
-                    `;
-                            grid.appendChild(div);
+                            const tr = document.createElement('tr');
+
+                            // Formato corto de números (K, M)
+                            const formatLongNum = (n) => {
+                                if (!n) return '0';
+                                if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
+                                if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
+                                return n;
+                            };
+
+                            tr.innerHTML = `
+                                <td>
+                                    <div style="font-weight:bold;">${l.name}</div>
+                                    <a href="${l.profile_url}" target="_blank" style="font-size:0.75rem; color:var(--primary); text-decoration:none;">ver perfil ↗</a>
+                                </td>
+                                <td><span style="font-size:0.85rem; padding:0.2rem 0.5rem; background:#1e293b; border-radius:4px;">${l.platform}</span></td>
+                                <td style="text-align:center; font-family:monospace;">${formatLongNum(l.followers_count)}</td>
+                                <td style="text-align:center; font-family:monospace;">${formatLongNum(l.avg_views)}</td>
+                                <td>
+                                    <div style="font-size:0.85rem;">${l.country || '-'}</div>
+                                    <div style="font-size:0.75rem; color:#9ca3af;">${l.niche || '-'}</div>
+                                </td>
+                                <td style="font-size:0.85rem; color:#d1d5db;">${l.email || '<span style="color:#4b5563;">n/a</span>'}</td>
+                                <td style="text-align:center;">
+                                    <span class="status-badge status-${l.status}" style="font-size:0.7rem;">${l.status.toUpperCase()}</span>
+                                </td>
+                                <td style="text-align:right;">
+                                    <button class="btn btn-sm" onclick="openActionModal(${l.id}, '${l.name}')" style="padding: 0.3rem 0.6rem; font-size:0.75rem;">
+                                        Registrar
+                                    </button>
+                                </td>
+                            `;
+                            tbody.appendChild(tr);
                         });
                     } catch (e) { console.error(e); }
                 }
@@ -1229,12 +1307,21 @@
                             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                             body: JSON.stringify({ items: safeItems })
                         });
+
                         const result = await res.json();
-                        alert(result.message);
-                        closeModal('bulkImportModal');
-                        resetBulkImport();
-                        loadLeads();
-                    } catch (e) { console.error(e); alert('Error al importar'); }
+
+                        if (res.ok) {
+                            alert(result.message || 'Importación completada con éxito');
+                            closeModal('bulkImportModal');
+                            resetBulkImport();
+                            loadLeads();
+                        } else {
+                            alert(result.error || 'Error al importar');
+                        }
+                    } catch (e) {
+                        console.error(e);
+                        alert('Error de conexión al importar');
+                    }
                 }
 
 
