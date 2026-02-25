@@ -259,6 +259,45 @@
             font-weight: 500;
         }
 
+        /* BULK ACTIONS BAR */
+        #bulkActionBar {
+            position: fixed;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%) translateY(150px);
+            background: #1f2937;
+            padding: 0.75rem 1.5rem;
+            border-radius: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.7);
+            border: 1px solid var(--primary);
+            z-index: 3000;
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        #bulkActionBar.active {
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .bulk-count {
+            background: var(--primary);
+            color: black;
+            padding: 0.2rem 0.6rem;
+            border-radius: 0.5rem;
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+
+        input[type="checkbox"].row-selector {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            accent-color: var(--primary);
+            margin: 0;
+        }
+
         .card {
             background: var(--card-bg);
             border-radius: 0.5rem;
@@ -396,7 +435,7 @@
                 </div>
                 <div style="display:flex; gap:1rem; align-items: center;">
                     <button class="btn btn-outline" onclick="openModal('bulkImportModal')">📋 Importar Excel</button>
-                    <button class="btn" onclick="openModal('createLeadModal')">+ Nuevo Lead</button>
+                    <button class="btn" onclick="openCreateLeadModal()">+ Nuevo Lead</button>
                     <!-- Admin Only Buttons -->
                     <div id="adminButtons" style="display:none; gap:0.5rem;">
                         <button class="btn btn-outline" onclick="openReportModal()">📊 Reportes</button>
@@ -503,6 +542,10 @@
                     <table class="data-table">
                         <thead>
                             <tr>
+                                <th style="width: 40px; text-align: center;">
+                                    <input type="checkbox" id="selectAllLeads" class="row-selector"
+                                        onclick="toggleAllLeads(this)">
+                                </th>
                                 <th>Prospecto</th>
                                 <th>Plataforma</th>
                                 <th style="text-align:center;">Seguidores</th>
@@ -515,6 +558,26 @@
                         </thead>
                         <tbody id="leadsTableBody"></tbody>
                     </table>
+                </div>
+
+                <!-- Floating Bulk Actions Bar -->
+                <div id="bulkActionBar">
+                    <div
+                        style="display:flex; align-items:center; gap:0.5rem; border-right:1px solid #374151; padding-right:1rem;">
+                        <span class="bulk-count" id="selectedCount">0</span>
+                        <span style="font-size:0.9rem; color:#9ca3af;">Seleccionados</span>
+                    </div>
+                    <div style="display:flex; gap:0.75rem;">
+                        <button class="btn btn-sm btn-outline" onclick="bulkEditStatus()" title="Cambiar Estado">
+                            <i class="ph ph-arrow-clockwise"></i> Estado
+                        </button>
+                        <button class="btn btn-sm btn-outline"
+                            style="color:#ef4444; border-color:rgba(239, 68, 68, 0.3);" onclick="bulkDeleteLeads()">
+                            <i class="ph ph-trash"></i> Borrar
+                        </button>
+                    </div>
+                    <button class="btn btn-sm" onclick="clearSelection()"
+                        style="background:transparent; border:none; color:#9ca3af;">Cancelar</button>
                 </div>
             </div>
 
@@ -686,11 +749,12 @@
                 </div>
             </div>
 
-            <!-- Modal Crear Lead -->
+            <!-- Modal Crear/Editar Lead -->
             <div id="createLeadModal" class="modal">
                 <div class="modal-content">
-                    <h3>Nuevo Prospecto</h3>
+                    <h3 id="leadModalTitle">Nuevo Prospecto</h3>
                     <form id="createLeadForm">
+                        <input type="hidden" id="editLeadId">
                         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
                             <div>
                                 <label>Nombre / Handle</label> <input type="text" id="newLeadName" required
@@ -1194,6 +1258,9 @@
                             };
 
                             tr.innerHTML = `
+                                <td style="text-align:center;">
+                                    <input type="checkbox" class="row-selector lead-checkbox" value="${l.id}" onchange="updateSelectionState()">
+                                </td>
                                 <td>
                                     <div style="font-weight:bold;">${l.name}</div>
                                     <a href="${l.profile_url}" target="_blank" style="font-size:0.75rem; color:var(--primary); text-decoration:none;">ver perfil ↗</a>
@@ -1209,14 +1276,109 @@
                                 <td style="text-align:center;">
                                     <span class="status-badge status-${l.status}" style="font-size:0.7rem;">${l.status.toUpperCase()}</span>
                                 </td>
-                                <td style="text-align:right;">
+                                <td style="text-align:right; display:flex; gap:0.25rem; justify-content:flex-end;">
+                                    <button class="btn btn-sm btn-outline" onclick="editLead(${JSON.stringify(l).replace(/"/g, '&quot;')})" style="padding: 0.3rem 0.6rem;">
+                                        <i class="ph ph-pencil"></i>
+                                    </button>
                                     <button class="btn btn-sm" onclick="openActionModal(${l.id}, '${l.name}')" style="padding: 0.3rem 0.6rem; font-size:0.75rem;">
-                                        Registrar
+                                        Log
                                     </button>
                                 </td>
                             `;
                             tbody.appendChild(tr);
                         });
+                        updateSelectionState(); // Reset bar
+                    } catch (e) { console.error(e); }
+                }
+
+                // --- LÓGICA DE SELECCIÓN ---
+                function toggleAllLeads(master) {
+                    const checks = document.querySelectorAll('.lead-checkbox');
+                    checks.forEach(c => c.checked = master.checked);
+                    updateSelectionState();
+                }
+
+                function updateSelectionState() {
+                    const checks = document.querySelectorAll('.lead-checkbox:checked');
+                    const bar = document.getElementById('bulkActionBar');
+                    const counter = document.getElementById('selectedCount');
+                    const master = document.getElementById('selectAllLeads');
+                    const allChecks = document.querySelectorAll('.lead-checkbox');
+
+                    counter.textContent = checks.length;
+                    if (checks.length > 0) {
+                        bar.classList.add('active');
+                    } else {
+                        bar.classList.remove('active');
+                    }
+
+                    // Sincronizar master
+                    if (allChecks.length > 0) {
+                        master.checked = checks.length === allChecks.length;
+                    }
+                }
+
+                function clearSelection() {
+                    document.getElementById('selectAllLeads').checked = false;
+                    toggleAllLeads(document.getElementById('selectAllLeads'));
+                }
+
+                // --- ACCIONES INDIVIDUALES / MASIVAS ---
+                window.editLead = (l) => {
+                    document.getElementById('leadModalTitle').textContent = 'Editar Prospecto';
+                    document.getElementById('editLeadId').value = l.id;
+                    document.getElementById('newLeadName').value = l.name;
+                    document.getElementById('newLeadPlatform').value = l.platform;
+                    document.getElementById('newLeadFollowers').value = l.followers_count;
+                    document.getElementById('newLeadViews').value = l.avg_views;
+                    document.getElementById('newLeadEmail').value = l.email || '';
+                    document.getElementById('newLeadCountry').value = l.country || '';
+                    document.getElementById('newLeadNiche').value = l.niche;
+                    document.getElementById('newLeadUrl').value = l.profile_url;
+
+                    openModal('createLeadModal');
+                };
+
+                async function bulkDeleteLeads() {
+                    const checks = document.querySelectorAll('.lead-checkbox:checked');
+                    const ids = Array.from(checks).map(c => parseInt(c.value));
+
+                    if (!confirm(`¿Estás seguro de que deseas eliminar ${ids.length} prospectos? Esta acción no se puede deshacer.`)) return;
+
+                    try {
+                        const res = await fetch(`${API_URL}/influencers/bulk`, {
+                            method: 'DELETE',
+                            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                            body: JSON.stringify({ ids })
+                        });
+                        const result = await res.json();
+                        alert(result.message);
+                        loadLeads();
+                    } catch (e) { console.error(e); alert('Error al eliminar'); }
+                }
+
+                async function bulkEditStatus() {
+                    const checks = document.querySelectorAll('.lead-checkbox:checked');
+                    const ids = Array.from(checks).map(c => parseInt(c.value));
+                    const nextStatus = prompt("Ingresa el nuevo estado para estos leads\n(pending, contacted, negotiating, closed):", "contacted");
+
+                    if (!nextStatus) return;
+
+                    try {
+                        const res = await fetch(`${API_URL}/influencers/interactions`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                            body: JSON.stringify({
+                                leadIds: ids,
+                                type: 'Cambio de estado masivo',
+                                notes: 'Actualización por lote desde el panel principal',
+                                new_status: nextStatus
+                            })
+                        });
+                        if (res.ok) {
+                            alert('Estados actualizados');
+                            loadLeads();
+                        }
                     } catch (e) { console.error(e); }
                 }
 
@@ -1552,9 +1714,14 @@
                     openModal('actionModal');
                 };
 
-                // Initialize Listeners for Forms (simplified for brevity but functional)
+                // Listener Crear/Editar Lead (Controlador Centralizado)
                 document.getElementById('createLeadForm').addEventListener('submit', async (e) => {
                     e.preventDefault();
+
+                    const editId = document.getElementById('editLeadId').value;
+                    const method = editId ? 'PUT' : 'POST';
+                    const endpoint = editId ? `${API_URL}/influencers/${editId}` : `${API_URL}/influencers`;
+
                     const data = {
                         name: document.getElementById('newLeadName').value,
                         platform: document.getElementById('newLeadPlatform').value,
@@ -1563,25 +1730,35 @@
                         avg_views: document.getElementById('newLeadViews').value,
                         email: document.getElementById('newLeadEmail').value,
                         country: document.getElementById('newLeadCountry').value,
-                        niche: document.getElementById('newLeadNiche').value
+                        niche: document.getElementById('newLeadNiche').value,
+                        status: editId ? undefined : 'pending' // Mantener estado si es edición
                     };
 
                     try {
-                        const res = await fetch(`${API_URL}/influencers`, {
-                            method: 'POST',
+                        const res = await fetch(endpoint, {
+                            method: method,
                             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                             body: JSON.stringify(data)
                         });
 
                         if (!res.ok) {
                             const err = await res.json();
-                            return alert(err.error || 'Error creando lead');
+                            return alert(err.error || 'Error en la operación');
                         }
 
+                        alert(editId ? 'Prospecto actualizado con éxito' : 'Prospecto creado exitosamente');
                         closeModal('createLeadModal');
                         loadLeads();
                     } catch (e) { alert('Error de conexión'); }
                 });
+
+                // Función auxiliar para resetear modal al abrir para "Nuevo"
+                window.openCreateLeadModal = () => {
+                    document.getElementById('leadModalTitle').textContent = 'Nuevo Prospecto';
+                    document.getElementById('editLeadId').value = '';
+                    document.getElementById('createLeadForm').reset();
+                    openModal('createLeadModal');
+                };
 
                 document.getElementById('actionForm').addEventListener('submit', async (e) => {
                     e.preventDefault();

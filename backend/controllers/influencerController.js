@@ -128,28 +128,34 @@ exports.bulkCreate = async (req, res) => {
     try {
         let count = 0;
         for (const item of items) {
-            // Insertar ignorando conflictos (por seguridad extra si el frontend falló al filtrar)
-            // Usamos INSERT ... ON CONFLICT DO NOTHING para evitar que un error pare todo el lote
-            const query = `
-                INSERT INTO influencers 
-                (name, platform, profile_url, followers_count, assigned_to, status, country, niche, avg_views, email) 
-                VALUES ($1, $2, $3, $4, $5, 'pending', $6, $7, $8, $9)
-                ON CONFLICT (name) DO NOTHING
-            `;
-            const params = [
-                item.name,
-                item.platform || 'Instagram',
-                item.profile_url || '',
-                item.followers_count || 0,
-                agentId,
-                item.country || '',
-                item.niche || '',
-                item.avg_views || 0,
-                item.email || ''
-            ];
+            // Verificación manual de existencia (Nombre o Link)
+            // Esto es más seguro que ON CONFLICT si las restricciones fallaron en la migración
+            const { rows: existing } = await pool.query(
+                "SELECT id FROM influencers WHERE name = $1 OR (profile_url != '' AND profile_url = $2) LIMIT 1",
+                [item.name, item.profile_url]
+            );
 
-            const result = await pool.query(query, params);
-            if (result.rowCount > 0) count++;
+            if (existing.length === 0) {
+                const query = `
+                    INSERT INTO influencers 
+                    (name, platform, profile_url, followers_count, assigned_to, status, country, niche, avg_views, email) 
+                    VALUES ($1, $2, $3, $4, $5, 'pending', $6, $7, $8, $9)
+                `;
+                const params = [
+                    item.name,
+                    item.platform || 'Instagram',
+                    item.profile_url || '',
+                    item.followers_count || 0,
+                    agentId,
+                    item.country || '',
+                    item.niche || '',
+                    item.avg_views || 0,
+                    item.email || ''
+                ];
+
+                await pool.query(query, params);
+                count++;
+            }
         }
         res.json({ message: `Se han importado ${count} prospectos exitosamente.` });
     } catch (err) {
@@ -191,11 +197,67 @@ exports.logInteraction = async (req, res) => {
             }
         }
 
-        res.json({ message: 'Interacción registrada exitosamente' });
-
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: 'Error registrando interacción' });
+    }
+};
+
+// Actualizar un prospecto (Edición de datos tácticos)
+exports.updateLead = async (req, res) => {
+    const { id } = req.params;
+    const { name, platform, profile_url, followers_count, country, niche, avg_views, email, status } = req.body;
+    const userId = req.user.id;
+    const userRole = req.user.role;
+
+    try {
+        // Verificar propiedad antes de editar (si no es admin)
+        if (userRole !== 'admin') {
+            const { rows: check } = await pool.query('SELECT assigned_to FROM influencers WHERE id = $1', [id]);
+            if (check.length === 0 || check[0].assigned_to !== userId) {
+                return res.status(403).json({ error: 'No tienes permiso para editar este prospecto' });
+            }
+        }
+
+        const query = `
+            UPDATE influencers 
+            SET name = $1, platform = $2, profile_url = $3, followers_count = $4, country = $5, 
+                niche = $6, avg_views = $7, email = $8, status = $9, updated_at = NOW() 
+            WHERE id = $10 
+            RETURNING *
+        `;
+        const params = [name, platform, profile_url, followers_count, country, niche, avg_views, email, status, id];
+
+        const { rows } = await pool.query(query, params);
+        res.json(rows[0]);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Error actualizando prospecto' });
+    }
+};
+
+// Borrado Masivo (Bulk Delete)
+exports.deleteLeads = async (req, res) => {
+    const { ids } = req.body; // Array de IDs
+    const userId = req.user.id;
+    const userRole = req.user.role;
+
+    if (!ids || !Array.isArray(ids)) return res.status(400).json({ error: 'Formato inválido' });
+
+    try {
+        let deletedCount = 0;
+        if (userRole === 'admin') {
+            const { rowCount } = await pool.query('DELETE FROM influencers WHERE id = ANY($1)', [ids]);
+            deletedCount = rowCount;
+        } else {
+            // Un agente solo borra los suyos
+            const { rowCount } = await pool.query('DELETE FROM influencers WHERE id = ANY($1) AND assigned_to = $2', [ids, userId]);
+            deletedCount = rowCount;
+        }
+        res.json({ message: `Se han eliminado ${deletedCount} prospectos exitosamente.` });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Error eliminando prospectos' });
     }
 };
 

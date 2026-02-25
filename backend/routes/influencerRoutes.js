@@ -15,6 +15,10 @@ router.post('/assign', authMiddleware.authenticate, authMiddleware.isAdmin, infl
 // Registro masivo y validación por lote
 router.post('/validate-batch', authMiddleware.authenticate, influencerController.validateBatch);
 router.post('/bulk-create', authMiddleware.authenticate, influencerController.bulkCreate);
+router.delete('/bulk', authMiddleware.authenticate, influencerController.deleteLeads);
+
+// Edición y Borrado Individual/Masivo
+router.put('/:id', authMiddleware.authenticate, influencerController.updateLead);
 
 // Registrar interacción (mensaje enviado, respuesta recibida)
 // Esta es la ruta principal que usarán los agentes
