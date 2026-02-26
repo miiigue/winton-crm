@@ -1177,7 +1177,7 @@
                         // Volver a estado normal (solo campos base requeridos)
                         form.querySelectorAll('input, select').forEach(el => el.required = false);
                         document.getElementById('newLeadName').required = true;
-                        document.getElementById('newLeadEmail').required = true;
+                        document.getElementById('newLeadEmail').required = false; // Corregido: Mail opcional por defecto
                         document.getElementById('newLeadUrl').required = true;
                         if (mandatoryAlert) mandatoryAlert.style.display = 'none';
                     }
@@ -1460,7 +1460,7 @@ IMPORTANTE: No me des introducciones, solo entrégame la tabla markdown decorada
                                 ${l.last_interaction_date ? `<div style="font-size:0.65rem; color:#4b5563; margin-top:2px;">${new Date(l.last_interaction_date).toLocaleDateString()}</div>` : ''}
                             </td>
                             <td style="text-align:center;">
-                                <span class="status-badge status-${l.status}" style="font-size:0.7rem; padding: 2px 8px;">${l.status.toUpperCase()}</span>
+                                <span class="status-badge status-${l.status || 'pending'}" style="font-size:0.7rem; padding: 2px 8px;">${(l.status || 'pending').toUpperCase()}</span>
                             </td>
                             <td style="text-align:center;">
                                 <div style="display:flex; gap:0.5rem; justify-content:center;">
@@ -2041,6 +2041,10 @@ IMPORTANTE: No me des introducciones, solo entrégame la tabla markdown decorada
 
                 document.getElementById('actionForm').addEventListener('submit', async (e) => {
                     e.preventDefault();
+
+                    const submitBtn = e.target.querySelector('button[type="submit"]');
+                    if (submitBtn) submitBtn.disabled = true;
+
                     const data = {
                         leadIds: [document.getElementById('actionLeadId').value],
                         type: document.getElementById('actionType').value,
@@ -2049,8 +2053,28 @@ IMPORTANTE: No me des introducciones, solo entrégame la tabla markdown decorada
                         screenshot_url: document.getElementById('actionScreenshotUrl').value,
                         budget_offer: document.getElementById('actionBudget').value || null
                     };
-                    await fetch(`${API_URL}/influencers/interactions`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(data) });
-                    closeModal('actionModal'); loadLeads();
+
+                    try {
+                        const res = await fetch(`${API_URL}/influencers/interactions`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                            body: JSON.stringify(data)
+                        });
+
+                        if (res.ok) {
+                            alert('Actividad registrada correctamente');
+                            closeModal('actionModal');
+                            loadLeads();
+                        } else {
+                            const errorData = await res.json();
+                            alert('Error del servidor: ' + (errorData.error || 'No se pudo guardar la actividad'));
+                        }
+                    } catch (err) {
+                        console.error('Error al registrar actividad:', err);
+                        alert('Error de conexión. Verifica tu internet o el estado del servidor.');
+                    } finally {
+                        if (submitBtn) submitBtn.disabled = false;
+                    }
                 });
 
                 document.getElementById('createAgentForm').addEventListener('submit', async (e) => {
